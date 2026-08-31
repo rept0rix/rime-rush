@@ -1,0 +1,40 @@
+# deps & build
+node_modules/
+.vercel/
+dist/
+.output/
+.nitro/
+.tanstack/
+*.local
+
+# env & secrets
+.env
+.env.*
+!.env.example
+.grok/
+
+# logs & os
+*.log
+.DS_Store
+Thumbs.db
+
+# editor
+.idea/
+.vscode/
+*.swp
+
+# grok / sandbox workspace (not part of the game)
+AGENTS.md
+AGENTS.project.md
+.project_id
+.node_modules.lock
+
+attachments/
+artifacts/
+screenshots/
+assets/
+
+# test dumps
+/tmp/
+playwright-report/
+test-results/

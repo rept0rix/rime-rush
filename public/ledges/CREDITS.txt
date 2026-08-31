@@ -1,0 +1,12 @@
+RIME RUSH ledges — 30 unique stair styles.
+Visual language inspired by CraftPix free platformer tilesets & game backgrounds:
+https://craftpix.net/freebies/filter/game-backgrounds/page/4/
+
+Background paintings used as tower washes (CraftPix freebies, their license):
+  lava.jpg      Free Lava Fields Level Map 2D Backgrounds
+  fairy.jpg     Free Fairy-Tale Game Backgrounds
+  beach.jpg     Free Beach 2D Game Backgrounds
+  fantasy.jpg   Free Fantasy Cartoon Game Backgrounds
+  vertical.jpg  Free Cartoon Vertical Game Backgrounds
+  crystal.jpg   Free Crystal Caves 2D Platformer Tileset
+  autumn.jpg    Free Autumn Forest 2D Platformer Tileset
