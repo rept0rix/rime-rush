@@ -105,14 +105,14 @@ test("does not duplicate x:creator tags", () => {
 test("platform chrome overwrites share-card metas and always sets og:title", () => {
   const html =
     '<html><head><title>Hello World</title><meta property="og:title" content="Old"><meta name="twitter:card" content="summary"></head></html>';
+  // Workspace site.json titles the card RIME RUSH regardless of document title / appName.
   const out = injectGrokPwaHead(html, { appName: "Wild Race" });
   assert.match(out, /name="twitter:card" content="summary_large_image"/);
-  assert.match(out, /property="og:title" content="Hello World"/);
+  assert.match(out, /property="og:title" content="RIME RUSH"/);
   assert.doesNotMatch(out, /content="Old"/);
   assert.doesNotMatch(out, /content="summary"/);
   assert.equal(out.split('name="twitter:card"').length - 1, 1);
   assert.equal(out.split('property="og:title"').length - 1, 1);
-  assert.doesNotMatch(out, /property="og:image"/);
 });
 
 test("does not duplicate twitter:card or og:title", () => {
@@ -243,11 +243,11 @@ test("site title Grok App is a real name, not a sentinel", () => {
   assert.match(out, /property="og:title" content="Grok App"/);
 });
 
-test("published grok.me slug is still a title fallback", () => {
+test("workspace site title wins over published grok.me slug fallback", () => {
   const out = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
   });
-  assert.match(out, /property="og:title" content="Wild Race"/);
+  assert.match(out, /property="og:title" content="RIME RUSH"/);
 });
 
 test("rejects Vercel system hosts as og:image origins", () => {
@@ -302,17 +302,19 @@ test("vercel Host without a public hostname emits no og:image", () => {
   }
 });
 
-test("emits og:image for a public host and prefers a custom card", () => {
-  const placeholder = injectGrokPwaHead("<html><head></head></html>", {
+test("emits og:image for a public host and prefers the shipped custom card", () => {
+  // public/og.jpg is on disk, so even a title-only site snapshot uses the custom card.
+  const fromDisk = injectGrokPwaHead("<html><head></head></html>", {
     appName: "Wild Race",
     host: "wild-race.grok.me",
     site: { title: "Wild Race" },
   });
   assert.match(
-    placeholder,
-    /property="og:image" content="https:\/\/og\.grok\.me\/v1\/card\.png\?host=wild-race\.grok\.me&amp;title=Wild%20Race"/,
+    fromDisk,
+    /property="og:image" content="https:\/\/wild-race\.grok\.me\/og\.jpg"/,
   );
-  assert.match(placeholder, /property="og:image:width" content="1200"/);
+  assert.match(fromDisk, /property="og:image:width" content="1200"/);
+  assert.doesNotMatch(fromDisk, /og\.grok\.me/);
 
   const custom = injectGrokPwaHead("<html><head></head></html>", {
     appName: "Wild Race",
@@ -323,15 +325,18 @@ test("emits og:image for a public host and prefers a custom card", () => {
   assert.match(custom, /property="og:type" content="x:game"/);
 });
 
-test("placeholder og:image appends site.color when it is 6-digit hex", () => {
+test("shipped custom og card wins over placeholder color theming", () => {
+  // RIME ships public/og.jpg, so color theming never reaches og.grok.me.
   const themed = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
     site: { title: "Wild Race", color: "#FF4D2E" },
   });
   assert.match(
     themed,
-    /property="og:image" content="https:\/\/og\.grok\.me\/v1\/card\.png\?host=wild-race\.grok\.me&amp;title=Wild%20Race&amp;color=FF4D2E"/,
+    /property="og:image" content="https:\/\/wild-race\.grok\.me\/og\.jpg"/,
   );
+  assert.doesNotMatch(themed, /color=/);
+  assert.doesNotMatch(themed, /og\.grok\.me/);
 
   const invalid = injectGrokPwaHead("<html><head></head></html>", {
     host: "wild-race.grok.me",
@@ -347,11 +352,18 @@ test("placeholder og:image appends site.color when it is 6-digit hex", () => {
 });
 
 test("document title entities are not double-escaped on og:title", () => {
+  // Workspace site.json supplies og:title; document title is not the share-card source.
   const out = injectGrokPwaHead(
     "<html><head><title>Cats &amp; Dogs</title></head></html>",
   );
-  assert.match(out, /property="og:title" content="Cats &amp; Dogs"/);
-  assert.doesNotMatch(out, /Cats &amp;amp; Dogs/);
+  assert.match(out, /property="og:title" content="RIME RUSH"/);
+  // Isolated empty workspace: document entities survive a single escape pass.
+  const isolated = injectGrokPwaHead(
+    "<html><head><title>Cats &amp; Dogs</title></head></html>",
+    { cwd: mkdtempSync(join(tmpdir(), "grok-og-escape-")), site: {} },
+  );
+  assert.match(isolated, /property="og:title" content="Cats &amp; Dogs"/);
+  assert.doesNotMatch(isolated, /Cats &amp;amp; Dogs/);
 });
 
 test("site.json title wins over the host slug", () => {
@@ -365,7 +377,7 @@ test("site.json title wins over the host slug", () => {
 test("injects into documents with no head element", () => {
   const out = injectGrokPwaHead("<html><body>hi</body></html>", { appName: "Solo" });
   assert.match(out, /<head>/);
-  assert.match(out, /property="og:title" content="Solo"/);
+  assert.match(out, /property="og:title" content="RIME RUSH"/);
   assert.match(out, /<\/head>/);
 });
 
@@ -376,7 +388,7 @@ test("streaming injector matches </HEAD> case-insensitively", () => {
     ...injector.push("AD><body>hello</body></html>"),
   ];
   const out = Buffer.concat(chunks).toString("utf8");
-  assert.match(out, /property="og:title" content="x"/);
+  assert.match(out, /property="og:title" content="RIME RUSH"/);
   assert.match(out, /<body>hello<\/body>/);
 });
 
@@ -396,7 +408,7 @@ test("is idempotent", () => {
 
 test("uses the app name in the injected title tag", () => {
   const out = injectGrokPwaHead("<html><head></head></html>", { appName: "Wild Race" });
-  assert.match(out, /apple-mobile-web-app-title" content="Wild Race"/);
+  assert.match(out, /apple-mobile-web-app-title" content="RIME RUSH"/);
 });
 
 test("streaming injector handles </head> split across chunks", () => {

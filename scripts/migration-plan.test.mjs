@@ -56,9 +56,19 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
   assert.deepEqual(pendingMigrations(["auth", "README.md"], []), []);
 });
 
-test("the auth schema ships outside the globbed directory", () => {
+test("RIME ships auth and game migrations in the globbed directory", () => {
   const migrationsDir = join(projectRoot(), "migrations");
-  assert.deepEqual(pendingMigrations(readdirSync(migrationsDir), []), []);
+  assert.deepEqual(
+    pendingMigrations(readdirSync(migrationsDir), []).map(({ name }) => name),
+    [
+      "0001_auth.sql",
+      "0002_rime.sql",
+      "0003_activity.sql",
+      "0004_live.sql",
+      "0005_social.sql",
+    ],
+  );
+  // Auth source copy remains available under migrations/auth/ for the on/off path.
   assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
 });
 

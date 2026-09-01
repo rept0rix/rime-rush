@@ -11,7 +11,8 @@ dist/
 .env
 .env.*
 !.env.example
-.grok/
+.grok/*
+!.grok/app-env.json
 
 # logs & os
 *.log
