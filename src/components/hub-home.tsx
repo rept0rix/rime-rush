@@ -17,9 +17,7 @@ import { recordRun } from "@/game/save";
 import { SKINS } from "@/game/sprites";
 import { displayName, useGame } from "@/game/store";
 import { dailySeed } from "@/game/world";
-import type { NetMsg, NetPlayer } from "@/game/types";
 import { clientId } from "@/lib/client-id";
-import { useP2PRoom } from "@/lib/multiplayer";
 import { getDashboard, submitRun } from "@/lib/rime-data";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 
@@ -49,21 +47,8 @@ export function HubHome() {
   const [climbers, setClimbers] = useState<string[]>([]);
   const hadLive = useRef(false);
   const selfId = useRef(clientId()).current;
-  const sendRef = useRef<(p: NetPlayer) => void>(() => {});
-  const p2p = useP2PRoom({
-    room: "rime-live",
-    name: displayName(save, "en"),
-    selfId,
-  });
-  sendRef.current = (p) => p2p.broadcast({ t: "state", p });
+  // Presence ghosts via live-tower / activity-pulse — no WebRTC on hub solo.
   useLiveTower(engineRef, selfId);
-
-  useEffect(() => {
-    return p2p.onMessage((_from, data) => {
-      const msg = data as NetMsg;
-      if (msg && typeof msg === "object" && "t" in msg) engineRef.current?.applyRemote(msg);
-    });
-  }, [p2p.onMessage]);
 
   useEffect(() => {
     const load = () => {
@@ -173,7 +158,6 @@ export function HubHome() {
           }).catch(() => {});
         },
         onAttractStart: () => startRef.current(),
-        sendState: (p) => sendRef.current(p),
         onCoins: (n) => {
           const s = useGame.getState().save;
           patchSave({ coins: s.coins + n });
@@ -232,7 +216,7 @@ export function HubHome() {
   const skin = SKINS[save.color % SKINS.length]!;
 
   return (
-    <div data-arcade-root className="absolute inset-0 overflow-hidden bg-bg">
+    <div data-arcade-root data-phone-surface className="absolute inset-0 overflow-hidden bg-bg">
       <canvas
         ref={canvasRef}
         className="absolute inset-0 h-full w-full touch-none"

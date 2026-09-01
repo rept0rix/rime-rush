@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ActivityPulse } from "@/components/activity-pulse";
+import { PhoneStage } from "@/components/phone-stage";
 import { ConnectPrompt, shouldPromptConnect } from "@/components/connect-prompt";
 import { GameView } from "@/components/game-view";
 import { HubBoard } from "@/components/hub-board";
@@ -10,9 +11,7 @@ import { LobbyView } from "@/components/lobby-view";
 import { NoteInbox } from "@/components/note-inbox";
 import { audioBus } from "@/game/audio";
 import { t } from "@/game/i18n";
-import { displayName, useGame } from "@/game/store";
-import { clientId } from "@/lib/client-id";
-import { useP2PRoom } from "@/lib/multiplayer";
+import { useGame } from "@/game/store";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export function RimeApp() {
@@ -60,56 +59,37 @@ export function RimeApp() {
   }, []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-bg text-fg">
+    <>
       <ActivityPulse />
+      <PhoneStage>
+        {screen === "play" && <PlayGate />}
+        {screen === "lobby" && <LobbyView />}
+        {screen === "menu" && <Hub />}
+        {result && screen !== "lobby" && <Results />}
+      </PhoneStage>
       <NoteInbox />
       <InstallSheet />
-      {screen === "play" && <PlayGate />}
-      {screen === "lobby" && <LobbyView />}
-      {screen === "menu" && <Hub />}
-      {result && screen !== "lobby" && <Results />}
-    </div>
+    </>
   );
 }
 
 function PlayGate() {
   const mode = useGame((s) => s.mode);
   const runId = useGame((s) => s.runId);
-  const save = useGame((s) => s.save);
-  const p2p = useP2PRoom({
-    room: "rime-live",
-    name: displayName(save, "en"),
-    selfId: clientId(),
-  });
-  return (
-    <GameView
-      key={runId}
-      mode={mode}
-      net={{
-        selfId: p2p.selfId,
-        sendState: (pl) => p2p.broadcast({ t: "state", p: pl }),
-        sendEvent: (msg) => p2p.send(msg),
-        onMessage: p2p.onMessage,
-      }}
-    />
-  );
+  // Solo / train / bots / replay: no WebRTC. Presence ghosts stay via live-tower.
+  // Explicit ROOM / laststand / race keep their own P2P mesh inside LobbyView.
+  return <GameView key={runId} mode={mode} />;
 }
 
 function Hub() {
   const hub = useGame((s) => s.hub);
   if (hub === "home") {
-    return (
-      <div className="absolute inset-0 overflow-hidden bg-bg">
-        <HubHome />
-      </div>
-    );
+    return <HubHome />;
   }
   return (
-    <div className="absolute inset-0 flex justify-center overflow-hidden bg-bg">
-      <div className="relative z-10 mx-auto flex h-full w-full max-w-md flex-col pt-[max(8px,env(safe-area-inset-top))] pb-[max(8px,env(safe-area-inset-bottom))]">
-        {hub === "board" && <HubBoard />}
-        {hub === "me" && <HubProfile />}
-      </div>
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-bg pt-[max(8px,env(safe-area-inset-top))] pb-[max(8px,env(safe-area-inset-bottom))]">
+      {hub === "board" && <HubBoard />}
+      {hub === "me" && <HubProfile />}
     </div>
   );
 }

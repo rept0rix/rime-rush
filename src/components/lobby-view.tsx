@@ -176,7 +176,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
   };
 
   return (
-    <div className="relative mx-auto flex h-full max-w-md flex-col overflow-y-auto px-4 pt-[max(16px,env(safe-area-inset-top))] pb-5">
+    <div className="relative mx-auto flex h-full w-full max-w-md flex-col overflow-y-auto px-4 pt-[max(16px,env(safe-area-inset-top))] pb-5">
       <button type="button" className="mb-2 self-start text-sm text-muted" onClick={leaveToMenu}>
         ← Back
       </button>

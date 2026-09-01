@@ -102,6 +102,7 @@ export class World {
         crumbleT: 0,
         gone: false,
         slickT: 0,
+        pulseT: 0,
       };
     }
     this.lastY += this.gap(n);
@@ -149,7 +150,7 @@ export class World {
     }
 
     const dir = kind === "conveyor" ? (this.rng() < 0.5 ? -1 : 1) : 0;
-    return { n, y, x, w, kind, dir, crumbleT: 0, gone: false, slickT: 0 };
+    return { n, y, x, w, kind, dir, crumbleT: 0, gone: false, slickT: 0, pulseT: 0 };
   }
 
   private place(n: number, kind: FloorKind, t: number): { x: number; w: number } {
@@ -244,6 +245,7 @@ export class World {
     }
     for (const f of this.floors) {
       if (f.slickT > 0) f.slickT = Math.max(0, f.slickT - dt);
+      if (f.pulseT > 0) f.pulseT = Math.max(0, f.pulseT - dt);
       if (f.kind === "crumble" && f.crumbleT > 0 && !f.gone) {
         f.crumbleT -= dt;
         if (f.crumbleT <= 0) f.gone = true;

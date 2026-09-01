@@ -7,7 +7,20 @@ interface Props {
 }
 
 export function ComboHud({ combo, comboKey, yell, gain, story }: Props) {
-  const shout = yell || (combo >= 4 ? "COMBO!!" : combo >= 2 ? `X${combo}` : "");
+  const shout =
+    yell ||
+    (combo >= 32
+      ? "RIME RUSH!"
+      : combo >= 14
+        ? "MASTER"
+        : combo >= 8
+          ? "COMBO!!"
+          : combo >= 4
+            ? "COMBO!!"
+            : combo >= 2
+              ? `X${combo}`
+              : "");
+  const size = combo >= 24 ? 88 : combo >= 14 ? 78 : combo >= 8 ? 72 : combo >= 4 ? 60 : 52;
   return (
     <div className="pointer-events-none absolute inset-0 z-40 overflow-hidden">
       {combo >= 2 && (
@@ -15,7 +28,14 @@ export function ComboHud({ combo, comboKey, yell, gain, story }: Props) {
           <p
             key={`y-${comboKey}`}
             className="combo-burst font-display leading-none text-gold"
-            style={{ fontSize: combo >= 8 ? 72 : combo >= 4 ? 60 : 52 }}
+            style={{
+              fontSize: size,
+              textShadow:
+                combo >= 8
+                  ? "0 0 18px rgba(255,211,106,0.85), 0 4px 0 #5a3a10"
+                  : "0 2px 0 #5a3a10",
+              letterSpacing: combo >= 8 ? "0.06em" : undefined,
+            }}
           >
             {shout}
           </p>

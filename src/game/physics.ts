@@ -272,9 +272,11 @@ function integrate(p: Player, world: World, dt: number, juice: JuiceSink): void 
       if (overlapX && prevY >= top - 1 && feet <= top + Math.max(6, -p.vy * dt + 4)) {
         p.y = top;
         if (f.kind === "crumble" && f.crumbleT === 0) f.crumbleT = 0.7;
+        if (f.kind === "spring") f.pulseT = 0.42;
+        else if (f.kind === "check") f.pulseT = 0.28;
         if (!wasGround) {
-          p.squash = 0.7;
-          juice.land(p);
+          p.squash = f.kind === "spring" ? 0.55 : 0.7;
+          juice.land(p, f);
           const edge = Math.min(p.x - f.x, f.x + f.w - p.x);
           if (edge < 12 && Math.abs(p.vx) > 40) juice.close(p);
           if (f.n < p.takeoffFloor) {
@@ -397,7 +399,7 @@ export function collidePlayers(a: Player, b: Player, juice: JuiceSink): void {
 
 export interface JuiceSink {
   jump(p: Player): void;
-  land(p: Player): void;
+  land(p: Player, floor?: Floor): void;
   wall(p: Player): void;
   combo(p: Player, prev: number, gain: number): void;
   comboBreak(p: Player): void;

@@ -29,6 +29,8 @@ export interface Floor {
   crumbleT: number;
   gone: boolean;
   slickT: number;
+  /** Brief visual pulse (spring bounce / check land). */
+  pulseT: number;
 }
 
 export type LootKind = "power" | "pill" | "elixir" | "ammo";
@@ -50,7 +52,7 @@ export interface Creep {
   vy: number;
   hp: number;
   maxHp: number;
-  kind: "rat" | "bat" | "ember";
+  kind: "rat" | "bat" | "ember" | "raider";
   facing: 1 | -1;
   alive: boolean;
   hurtT: number;

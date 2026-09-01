@@ -221,12 +221,17 @@ export class RimeEngine {
 				}
 				this.burst(p.x, p.y, 7 + Math.min(6, p.combo), "#e8f4ff", "dust");
 			},
-			land: (p) => {
+			land: (p, floor) => {
 				if (p.id === this.localId) {
 					this.audio.land();
 					this.shakeOn && buzz(10);
 				}
-				this.burst(p.x, p.y, 10, "#cfefff", "dust");
+				const kind = floor?.kind ?? "ice";
+				if (kind === "spring") this.burst(p.x, p.y, 8, "#7cffb2", "spark");
+				else if (kind === "crumble") this.burst(p.x, p.y, 8, "#c4a882", "dust");
+				else if (kind === "check") this.burst(p.x, p.y, 7, "#ffd36a", "spark");
+				else if (kind === "conveyor") this.burst(p.x, p.y, 5, "#7ee7ff", "trail");
+				else this.burst(p.x, p.y, 8, "#b8f0ff", "ice");
 				if (p.id === this.localId) this.punch(.38 + Math.min(.4, p.combo * .05));
 			},
 			wall: (p) => {
@@ -808,13 +813,13 @@ export class RimeEngine {
 	hitCreep(c: any, dmg: any, by: any) {
 		c.hp -= dmg;
 		c.hurtT = .2;
-		c.vx += (by ? Math.sign(c.x - by.x) : 1) * 120;
+		c.vx += (by ? Math.sign(c.x - by.x) : 1) * (c.kind === "raider" ? 70 : 120);
 		if (c.hp > 0) return;
 		c.alive = false;
 		this.burst(c.x, c.y, 10, "#ff4d8a", "spark");
 		if (by) {
 			by.score += 60;
-			this.hooks.onCoins?.(8 + (c.kind === "bat" ? 4 : 0));
+			this.hooks.onCoins?.(8 + (c.kind === "bat" ? 4 : c.kind === "raider" ? 10 : 0));
 			this.world.pickups.push({
 				id: this.world.nextPickupId++,
 				x: c.x,
@@ -854,11 +859,14 @@ export class RimeEngine {
 			stepCreep(c, this.world, dt, prey);
 			if (c.y < this.cam.y - 40) c.alive = false;
 			if (!prey?.alive) continue;
-			if (Math.abs(c.x - prey.x) < 26 && Math.abs(c.y - prey.y) < 40 && c.hurtT <= 0) {
-				this.hurt(prey, c.kind === "ember" ? 20 : c.kind === "bat" ? 12 : 16);
+			if (Math.abs(c.x - prey.x) < (c.kind === "raider" ? 32 : 26) && Math.abs(c.y - prey.y) < (c.kind === "raider" ? 48 : 40) && c.hurtT <= 0) {
+				const dmg = c.kind === "raider" ? 28 : c.kind === "ember" ? 20 : c.kind === "bat" ? 12 : 16;
+				const knock = c.kind === "raider" ? 220 : 110;
+				this.hurt(prey, dmg);
 				c.vx = -c.vx;
-				c.hurtT = .45;
-				prey.vx += Math.sign(prey.x - c.x) * 110;
+				c.hurtT = c.kind === "raider" ? .55 : .45;
+				prey.vx += Math.sign(prey.x - c.x) * knock;
+				if (c.kind === "raider") prey.vy += 80;
 			}
 		}
 		if (this.creeps.length > 16) this.creeps = this.creeps.filter((c) => c.alive).slice(-14);
@@ -1268,6 +1276,39 @@ export class RimeEngine {
 			color: "rgba(232,244,255,0.7)",
 			kind: "snow"
 		});
+		// Cheap ambient ledge juice: crumble dust while failing, ice drips.
+		if (this.particles.length < 40) {
+			const mid = this.cam.y + this.viewH * 0.5;
+			for (const f of this.world.nearby(mid, this.viewH + 40)) {
+				if (f.gone) continue;
+				const top = floorTop(f);
+				if (f.kind === "crumble" && f.crumbleT > 0 && Math.random() < 0.28) {
+					this.particles.push({
+						x: f.x + Math.random() * f.w,
+						y: top + 2,
+						vx: (Math.random() - 0.5) * 40,
+						vy: -20 - Math.random() * 50,
+						life: 0.35 + Math.random() * 0.35,
+						max: 0.7,
+						size: 1.2 + Math.random() * 2,
+						color: "#c4a882",
+						kind: "dust",
+					});
+				} else if (f.kind === "ice" && Math.random() < 0.012) {
+					this.particles.push({
+						x: f.x + 6 + Math.random() * Math.max(8, f.w - 12),
+						y: top,
+						vx: (Math.random() - 0.5) * 8,
+						vy: -10 - Math.random() * 20,
+						life: 0.5 + Math.random() * 0.4,
+						max: 0.9,
+						size: 1.1 + Math.random(),
+						color: "rgba(200,236,255,0.85)",
+						kind: "ice",
+					});
+				}
+			}
+		}
 	}
 	burst(x: any, y: any, n: any, color: any, kind: any) {
 		const count = kind === "blood" ? n : Math.min(n, 8);

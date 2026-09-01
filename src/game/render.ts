@@ -11,7 +11,7 @@ import { drawArcadeWorld, WALL_PALETTE, WORLD_TITLE, worldForFloor, type ArcadeW
 import { POWER_BY_ID } from "./powers";
 import { POWER_NAME } from "./i18n";
 import { ledgeIndex, type SpriteBank } from "./sprites";
-import type { Corpse, Creep, Lang, Particle, Player, Popup } from "./types";
+import type { Corpse, Creep, Floor, Lang, Particle, Player, Popup } from "./types";
 import { floorTop, type World } from "./world";
 
 export interface Cam {
@@ -195,55 +195,53 @@ function drawFloors(
   for (const f of world.nearby(cam.y + viewH * 0.5, viewH + 80)) {
     if (f.gone) continue;
     const top = worldToScreen(floorTop(f), cam, viewH);
-    const shake = f.kind === "crumble" && f.crumbleT > 0 ? Math.sin(now / 40) * 2 : 0;
+    const crumbling = f.kind === "crumble" && f.crumbleT > 0;
+    const shake = crumbling ? Math.sin(now / 36) * (1.6 + (1 - Math.min(1, f.crumbleT / 0.7)) * 2.2) : 0;
     const x = f.x + shake;
     const w = f.w;
-    const h = 15;
+    const springPulse = f.kind === "spring" ? Math.min(1, f.pulseT / 0.42) : 0;
+    const idleBob = f.kind === "spring" ? Math.sin(now / 140) * 0.8 : 0;
+    const h = f.kind === "spring" ? 15 * (1 - springPulse * 0.28) + idleBob * 0.15 : 15;
+    const y = f.kind === "spring" ? top + (15 - h) + springPulse * 2 : top;
     const blit = sprites.ledge(ledgeIndex(f.n, f.kind));
 
     ctx.fillStyle = "rgba(0,0,0,0.32)";
     ctx.beginPath();
-    ctx.ellipse(x + w / 2, top + h + 3, w * 0.42, 3.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + w / 2, top + 15 + 3, w * 0.42, 3.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
     if (blit) {
       ctx.save();
-      roundRect(ctx, x, top, w, h, 4);
+      roundRect(ctx, x, y, w, h, 4);
       ctx.clip();
-      drawNine(ctx, blit, x, top, w, h);
+      drawNine(ctx, blit, x, y, w, h);
       ctx.restore();
     } else {
-      drawFallbackLedge(ctx, x, top, w, h, f.kind);
+      drawFallbackLedge(ctx, x, y, w, h, f.kind);
     }
-    drawLedgeFx(ctx, f, x, top, w, h, now, ledgeIndex(f.n, f.kind));
+    drawLedgeFx(ctx, f, x, y, w, h, now, ledgeIndex(f.n, f.kind));
 
     ctx.fillStyle = "rgba(255,255,255,0.28)";
-    ctx.fillRect(x + 3, top, w - 6, 1.5);
+    ctx.fillRect(x + 3, y, w - 6, 1.5);
 
     if (f.n > 0 && f.n % 10 === 0) {
       const px = x + w / 2;
+      const badgeY = top + 15 + 1;
       ctx.fillStyle = "#3a2818";
-      ctx.fillRect(px - 14, top + h + 1, 28, 11);
+      ctx.fillRect(px - 14, badgeY, 28, 11);
       ctx.strokeStyle = "#140c08";
-      ctx.strokeRect(px - 14, top + h + 1, 28, 11);
+      ctx.strokeRect(px - 14, badgeY, 28, 11);
       ctx.fillStyle = "#fff4dc";
       ctx.font = "700 10px Teko, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(String(f.n), px, top + h + 10);
-    }
-
-    if (f.kind === "conveyor") {
-      ctx.fillStyle = "#07122c";
-      ctx.font = "9px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(f.dir >= 0 ? "► ►" : "◄ ◄", x + w / 2, top + 11);
+      ctx.fillText(String(f.n), px, badgeY + 9);
     }
   }
 }
 
 function drawLedgeFx(
   ctx: CanvasRenderingContext2D,
-  f: { n: number; kind: string },
+  f: Floor,
   x: number,
   y: number,
   w: number,
@@ -252,45 +250,165 @@ function drawLedgeFx(
   style: number,
 ): void {
   const t = now / 1000;
+  const span = Math.max(12, w - 16);
   ctx.save();
-  if (style === 4 || style === 13) {
-    const pulse = 0.35 + Math.sin(t * 6 + f.n) * 0.2;
-    ctx.fillStyle = style === 4 ? `rgba(255,120,40,${pulse})` : `rgba(160,80,255,${pulse})`;
-    ctx.fillRect(x + 4, y + 2, w - 8, 3);
-  }
-  if (style === 14) {
-    ctx.strokeStyle = `rgba(80,255,255,${0.45 + Math.sin(t * 8) * 0.25})`;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-  }
-  if (style === 0 || style === 15 || style === 24 || style === 25) {
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
-    for (let i = 0; i < 3; i++) {
-      const px = x + 10 + ((t * 30 + i * 47 + f.n * 13) % Math.max(12, w - 20));
-      const py = y - 2 - Math.abs(Math.sin(t * 5 + i)) * 4;
-      ctx.globalAlpha = 0.35 + (i % 2) * 0.25;
+
+  // --- kind juice (specials first) ---
+  if (f.kind === "ice") {
+    // cool rim shimmer
+    const shimmer = 0.18 + Math.sin(t * 5 + f.n) * 0.1;
+    ctx.fillStyle = `rgba(180,230,255,${shimmer})`;
+    ctx.fillRect(x + 2, y + 1, w - 4, 2);
+    // sparkles skim the top
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    for (let i = 0; i < 4; i++) {
+      const px = x + 8 + ((t * 38 + i * 53 + f.n * 17) % span);
+      const py = y - 1 - Math.abs(Math.sin(t * 6 + i + f.n)) * 3.5;
+      ctx.globalAlpha = 0.3 + (i % 2) * 0.28;
       ctx.beginPath();
-      ctx.arc(px, py, 1.4, 0, Math.PI * 2);
+      ctx.arc(px, py, 1.2 + (i % 2) * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // melt drips under the ledge
+    ctx.strokeStyle = "rgba(170,220,255,0.45)";
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) {
+      const dx = x + 10 + ((f.n * 19 + i * 41) % span);
+      const len = 3 + ((Math.sin(t * 3 + i + f.n) + 1) * 2.5);
+      ctx.globalAlpha = 0.35 + Math.abs(Math.sin(t * 2.4 + i)) * 0.35;
+      ctx.beginPath();
+      ctx.moveTo(dx, y + h - 1);
+      ctx.lineTo(dx, y + h + len);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(dx, y + h + len + 0.8, 1.1, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(200,236,255,0.55)";
       ctx.fill();
     }
     ctx.globalAlpha = 1;
   }
-  if (style === 1 || style === 16 || style === 18) {
-    ctx.fillStyle = "rgba(80,180,70,0.55)";
-    ctx.fillRect(x + 8, y - 3, 3, 4);
-    ctx.fillRect(x + w * 0.6, y - 4, 2.5, 5);
+
+  if (f.kind === "check") {
+    const pulse = 0.35 + Math.sin(t * 4 + f.n) * 0.15 + Math.min(0.35, f.pulseT * 1.2);
+    ctx.strokeStyle = `rgba(255,211,106,${pulse})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+    ctx.fillStyle = `rgba(255,211,106,${0.12 + pulse * 0.2})`;
+    ctx.fillRect(x + 3, y + 2, w - 6, 3);
+    ctx.fillStyle = "rgba(255,244,220,0.8)";
+    for (let i = 0; i < 2; i++) {
+      const px = x + 12 + ((t * 22 + i * 70 + f.n * 9) % span);
+      ctx.globalAlpha = 0.4 + pulse * 0.4;
+      ctx.beginPath();
+      ctx.arc(px, y - 1, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   }
-  if (style === 6) {
-    ctx.fillStyle = "rgba(230,240,255,0.35)";
-    ctx.beginPath();
-    ctx.ellipse(x + w * 0.3, y + 2, 10, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
+
+  if (f.kind === "crumble") {
+    const danger = f.crumbleT > 0 ? 1 - Math.min(1, f.crumbleT / 0.7) : 0;
+    ctx.strokeStyle = `rgba(60,36,20,${0.35 + danger * 0.5})`;
+    ctx.lineWidth = 1.25;
+    const cracks = 2 + (danger > 0.2 ? 2 : 0);
+    for (let i = 0; i < cracks; i++) {
+      const cx = x + w * (0.2 + i * 0.22);
+      ctx.beginPath();
+      ctx.moveTo(cx, y + 2);
+      ctx.lineTo(cx + 3 + i, y + h * 0.55);
+      ctx.lineTo(cx - 2, y + h - 1);
+      ctx.stroke();
+    }
+    if (danger > 0) {
+      ctx.fillStyle = `rgba(196,168,130,${0.25 + danger * 0.45})`;
+      for (let i = 0; i < 3; i++) {
+        const px = x + 6 + ((t * 50 + i * 37 + f.n * 11) % span);
+        const py = y + h + 1 + Math.abs(Math.sin(t * 9 + i)) * (2 + danger * 4);
+        ctx.globalAlpha = 0.35 + danger * 0.4;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.2 + danger, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = `rgba(90,50,30,${danger * 0.22})`;
+      ctx.fillRect(x, y, w, h);
+    }
   }
+
   if (f.kind === "spring") {
-    const b = Math.abs(Math.sin(t * 7)) * 3;
-    ctx.fillStyle = "rgba(120,255,170,0.55)";
-    ctx.fillRect(x + w * 0.5 - 6, y - b, 12, 2);
+    const pulse = Math.min(1, f.pulseT / 0.42);
+    const bob = Math.abs(Math.sin(t * 7));
+    const glow = 0.28 + bob * 0.22 + pulse * 0.45;
+    ctx.fillStyle = `rgba(120,255,170,${glow})`;
+    ctx.beginPath();
+    ctx.ellipse(x + w * 0.5, y + 2, w * 0.28, 3 + pulse * 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // coil / pad cue
+    const padH = 2 + bob * 2 - pulse * 1.5;
+    ctx.fillStyle = `rgba(80,220,140,${0.55 + pulse * 0.35})`;
+    ctx.fillRect(x + w * 0.5 - 7, y - padH - pulse, 14, Math.max(1.5, padH));
+    if (pulse > 0.05) {
+      ctx.strokeStyle = `rgba(180,255,210,${pulse * 0.85})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 2, y + 1, w - 4, h - 2);
+    }
   }
+
+  if (f.kind === "conveyor") {
+    const dir = f.dir >= 0 ? 1 : -1;
+    const scroll = ((t * 55 * dir) % 18 + 18) % 18;
+    ctx.save();
+    roundRect(ctx, x + 2, y + 3, w - 4, h - 5, 2);
+    ctx.clip();
+    ctx.fillStyle = "rgba(7,18,44,0.22)";
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = "rgba(126,231,255,0.55)";
+    ctx.lineWidth = 1.5;
+    for (let sx = -18; sx < w + 18; sx += 18) {
+      const cx = x + sx + scroll;
+      ctx.beginPath();
+      if (dir >= 0) {
+        ctx.moveTo(cx, y + 5);
+        ctx.lineTo(cx + 6, y + h * 0.5);
+        ctx.lineTo(cx, y + h - 4);
+      } else {
+        ctx.moveTo(cx + 6, y + 5);
+        ctx.lineTo(cx, y + h * 0.5);
+        ctx.lineTo(cx + 6, y + h - 4);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.fillStyle = "rgba(126,231,255,0.35)";
+    ctx.fillRect(x + 2, y + 1, w - 4, 1.5);
+  }
+
+  if (f.slickT > 0) {
+    const a = Math.min(1, f.slickT / 5) * 0.35;
+    ctx.fillStyle = `rgba(180,240,255,${a})`;
+    ctx.fillRect(x + 2, y + 1, w - 4, 3);
+  }
+
+  // --- leftover atlas-style accents (ice variety) ---
+  if (f.kind === "ice") {
+    if (style === 4 || style === 13) {
+      const pulse = 0.28 + Math.sin(t * 6 + f.n) * 0.16;
+      ctx.fillStyle = style === 4 ? `rgba(255,120,40,${pulse})` : `rgba(160,80,255,${pulse})`;
+      ctx.fillRect(x + 4, y + 3, w - 8, 2);
+    }
+    if (style === 14) {
+      ctx.strokeStyle = `rgba(80,255,255,${0.35 + Math.sin(t * 8) * 0.2})`;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    }
+    if (style === 1 || style === 16 || style === 18) {
+      ctx.fillStyle = "rgba(80,180,70,0.5)";
+      ctx.fillRect(x + 8, y - 3, 3, 4);
+      ctx.fillRect(x + w * 0.6, y - 4, 2.5, 5);
+    }
+  }
+
   ctx.restore();
 }
 
@@ -304,11 +422,12 @@ function drawNine(
 ): void {
   if (w < 8 || h < 4) return;
   const { img, sx, sy, sw, sh } = blit;
-  if (!img || sw < 4 || sh < 4) return;
+  if (!img || sw < 4 || sh < 4 || sx < 0 || sy < 0) return;
   const cap = Math.max(10, Math.min(Math.floor(sw * 0.2), Math.floor(sw / 3)));
   const midS = Math.max(1, sw - cap * 2);
   const capD = Math.max(6, Math.min(14, w * 0.16));
   const midD = Math.max(1, w - capD * 2);
+  if (cap <= 0 || midS <= 0 || capD <= 0 || midD <= 0 || h <= 0) return;
   ctx.imageSmoothingEnabled = true;
   try {
     ctx.drawImage(img, sx, sy, cap, sh, x, y, capD, h);
@@ -340,6 +459,9 @@ function drawFallbackLedge(
   } else if (kind === "spring") {
     ice = "#b8ffd0";
     body = "#2a5a40";
+  } else if (kind === "conveyor") {
+    ice = "#9ad8ff";
+    body = "#1a2a48";
   }
   ctx.fillStyle = body;
   ctx.fillRect(x + 1, y + 4, w - 2, Math.max(4, h - 5));
@@ -640,19 +762,23 @@ function drawCreeps(ctx: CanvasRenderingContext2D, creeps: Creep[], cam: Cam, vi
     ctx.translate(c.x, sy);
     if (c.hurtT > 0) ctx.globalAlpha = 0.65;
     if (flash) {
-      ctx.fillStyle = "rgba(255,80,80,0.35)";
+      ctx.fillStyle = c.kind === "raider" ? "rgba(255,120,40,0.45)" : "rgba(255,80,80,0.35)";
+      const er = c.kind === "raider" ? 30 : 22;
       ctx.beginPath();
-      ctx.ellipse(0, -18, 22, 22, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -18, er, er, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.scale(c.facing, 1);
     if (img) {
-      const dh = c.kind === "bat" ? 34 : 36;
+      const dh = c.kind === "raider" ? 46 : c.kind === "bat" ? 34 : 36;
       const dw = dh * (img.width / img.height);
       ctx.drawImage(img, -dw / 2, -dh, dw, dh);
     } else {
-      ctx.fillStyle = c.kind === "ember" ? "#ff4d8a" : c.kind === "bat" ? "#6a4a88" : "#5a3220";
-      roundRect(ctx, -10, -22, 20, 20, 6);
+      ctx.fillStyle =
+        c.kind === "ember" ? "#ff4d8a" : c.kind === "bat" ? "#6a4a88" : c.kind === "raider" ? "#8a3a28" : "#5a3220";
+      const bw = c.kind === "raider" ? 14 : 10;
+      const bh = c.kind === "raider" ? 28 : 22;
+      roundRect(ctx, -bw, -bh, bw * 2, bh, 6);
       ctx.fill();
     }
     ctx.restore();

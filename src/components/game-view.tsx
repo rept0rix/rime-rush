@@ -131,7 +131,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
   }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-bg" dir="ltr">
+    <div className="absolute inset-0 overflow-hidden bg-bg" dir="ltr" data-phone-surface>
       <canvas
         ref={canvasRef}
         className="absolute inset-0 block h-full w-full touch-none"

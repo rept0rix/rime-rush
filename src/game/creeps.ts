@@ -9,15 +9,22 @@ export function spawnCreep(world: World, floor: number): Creep | null {
   const f = world.floorByN(Math.max(1, floor));
   if (!f) return null;
   const roll = Math.random();
-  const ember = floor > 10 && roll < 0.28;
-  const bat = !ember && floor > 14 && roll < 0.62;
-  const kind = ember ? "ember" : bat ? "bat" : "rat";
-  const hp = kind === "ember" ? 56 : kind === "bat" ? 28 : 40;
+  // Heavier raider shows up mid-tower; rarer than ember, never with bat roll race.
+  const raider = floor > 8 && roll < 0.18;
+  const ember = !raider && floor > 10 && roll < 0.42;
+  const bat = !raider && !ember && floor > 14 && roll < 0.72;
+  const kind = raider ? "raider" : ember ? "ember" : bat ? "bat" : "rat";
+  const hp = kind === "raider" ? 90 : kind === "ember" ? 56 : kind === "bat" ? 28 : 40;
+  const groundY = floorTop(f) + (kind === "bat" || kind === "ember" ? 40 : 8);
+  const speed =
+    kind === "raider"
+      ? 45 + Math.random() * 25
+      : 70 + Math.random() * 50 + (kind === "ember" ? 30 : 0);
   return {
     id: nextId++,
     x: f.x + f.w * (0.2 + Math.random() * 0.6),
-    y: floorTop(f) + (kind === "bat" ? 40 : 8),
-    vx: (Math.random() < 0.5 ? -1 : 1) * (70 + Math.random() * 50 + (kind === "ember" ? 30 : 0)),
+    y: groundY,
+    vx: (Math.random() < 0.5 ? -1 : 1) * speed,
     vy: 0,
     hp,
     maxHp: hp,
@@ -32,20 +39,33 @@ export function spawnCreep(world: World, floor: number): Creep | null {
 
 export function stepCreep(c: Creep, world: World, dt: number, prey: Player | undefined): void {
   c.hurtT = Math.max(0, c.hurtT - dt);
-  c.animT += dt * (c.kind === "bat" ? 12 : 8);
-  const near = prey && prey.alive && Math.hypot(prey.x - c.x, prey.y - c.y) < (c.kind === "ember" ? 130 : 88);
+  const animRate = c.kind === "bat" ? 12 : c.kind === "raider" ? 6 : 8;
+  c.animT += dt * animRate;
+
+  const aggro =
+    c.kind === "raider" ? 150 : c.kind === "ember" ? 130 : 88;
+  const near = prey && prey.alive && Math.hypot(prey.x - c.x, prey.y - c.y) < aggro;
+
+  // Raider: slower telegraph (long windup) then a heavy lunge.
+  const windNeed = c.kind === "raider" ? 0.85 : 0.45;
+  const lungeVx =
+    c.kind === "raider" ? 320 : c.kind === "ember" ? 260 : c.kind === "bat" ? 210 : 180;
+  const lungeVy =
+    c.kind === "raider" ? 160 : c.kind === "rat" ? 220 : 140;
+
   if (near && prey) {
     c.windup += dt;
-    if (c.windup > 0.45) {
+    if (c.windup > windNeed) {
       const dir = Math.sign(prey.x - c.x) || c.facing;
-      c.vx = dir * (c.kind === "ember" ? 260 : c.kind === "bat" ? 210 : 180);
-      if (c.kind !== "rat") c.vy = Math.sign(prey.y + 10 - c.y) * 140;
-      else c.vy = 220;
-      c.windup = -0.35;
+      c.vx = dir * lungeVx;
+      if (c.kind === "rat") c.vy = lungeVy;
+      else c.vy = Math.sign(prey.y + 10 - c.y) * lungeVy;
+      c.windup = c.kind === "raider" ? -0.55 : -0.35;
     }
   } else {
     c.windup = Math.max(0, c.windup - dt);
   }
+
   if (c.kind === "bat" || c.kind === "ember") {
     const chase = c.kind === "ember" ? 180 : 110;
     const lift = c.kind === "ember" ? 110 : 80;
@@ -58,6 +78,11 @@ export function stepCreep(c: Creep, world: World, dt: number, prey: Player | und
     c.x += c.vx * dt;
     c.y += c.vy * dt;
   } else {
+    // rat + raider: grounded heavies
+    if (c.kind === "raider" && prey?.alive && Math.abs(prey.x - c.x) < 200) {
+      c.vx += Math.sign(prey.x - c.x) * 90 * dt;
+      c.vx = Math.max(-160, Math.min(160, c.vx));
+    }
     c.vy -= F.GRAVITY * dt;
     c.x += c.vx * dt;
     c.y += c.vy * dt;
@@ -67,7 +92,7 @@ export function stepCreep(c: Creep, world: World, dt: number, prey: Player | und
       if (c.vy <= 0 && c.y >= top - 8 && c.y <= top + 16 && c.x > f.x - 6 && c.x < f.x + f.w + 6) {
         c.y = top;
         c.vy = 0;
-        if (Math.random() < 0.012) c.vy = 300;
+        if (c.kind !== "raider" && Math.random() < 0.012) c.vy = 300;
       }
     }
   }
