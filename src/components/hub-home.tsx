@@ -30,7 +30,7 @@ export function HubHome() {
   const setResult = useGame((s) => s.setResult);
   const result = useGame((s) => s.result);
   const lang = save.lang;
-  const copy = t("en");
+  const copy = t(lang);
   const user = useCurrentUser();
   const signedIn = !!user && !user.isDevFallback;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,7 +58,7 @@ export function HubHome() {
           setWaiting(d.waitingCount);
           setClimbers(
             d.online
-              .filter((p) => p.status === "online" && p.screen === "play" && p.name !== displayName(save, "en"))
+              .filter((p) => p.status === "online" && p.screen === "play" && p.name !== displayName(save, lang))
               .map((p) => p.name)
               .slice(0, 6),
           );
@@ -148,7 +148,7 @@ export function HubHome() {
           void submitRun({
             data: {
               clientId: clientId(),
-              name: displayName(next, "en"),
+              name: displayName(next, lang),
               floor: r.floor,
               score: r.score,
               combo: r.combo,
@@ -176,7 +176,7 @@ export function HubHome() {
       engineRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [save.color]);
+  }, [save.color, lang]);
 
   useEffect(() => {
     if (live) {
@@ -216,7 +216,7 @@ export function HubHome() {
   const skin = SKINS[save.color % SKINS.length]!;
 
   return (
-    <div data-arcade-root data-phone-surface className="absolute inset-0 overflow-hidden bg-bg">
+    <div data-arcade-root data-phone-surface className="absolute inset-0 overflow-hidden bg-bg" dir="ltr">
       <canvas
         ref={canvasRef}
         className="absolute inset-0 h-full w-full touch-none"
@@ -240,7 +240,7 @@ export function HubHome() {
       <div className={`absolute inset-x-0 top-0 z-30 flex items-start justify-between px-3 pt-[max(8px,env(safe-area-inset-top))] ${live || result ? "chrome-out" : ""}`}>
         <button
           type="button"
-          aria-label="Profile"
+          aria-label={copy.profile}
           onClick={() => setHub("me")}
           className="flex items-center gap-2 rounded-full border border-line bg-[#140c08]/80 pr-3"
         >
@@ -254,7 +254,7 @@ export function HubHome() {
               <StatusDot status={save.status} />
             </span>
           </span>
-          <span className="text-sm font-bold">{save.name.trim() || "Profile"}</span>
+          <span className="text-sm font-bold">{save.name.trim() || copy.profile}</span>
         </button>
         <div className="flex items-center gap-2">
           <BellButton />
@@ -304,7 +304,7 @@ export function HubHome() {
               ref={nameRef}
               value={nameDraft}
               maxLength={12}
-              placeholder="Name"
+              placeholder={copy.name}
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
@@ -437,7 +437,7 @@ export function HubHome() {
 
       {settings && (
         <div data-arcade-root className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-bg/80">
-          <p className="font-display text-6xl text-ice">PAUSE</p>
+          <p className="font-display text-6xl text-ice">{copy.pause}</p>
           <FeelTiles
             mute={save.mute}
             shake={save.shake}

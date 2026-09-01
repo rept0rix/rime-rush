@@ -25,7 +25,7 @@ export function ConnectPrompt({ onClose }: { onClose: () => void }) {
     setSaving(true);
     void saveMyRun({
       data: {
-        name: displayName(save, "en"),
+        name: displayName(save, save.lang),
         floor: result.floor,
         score: result.score,
         combo: result.combo,
@@ -49,7 +49,7 @@ export function ConnectPrompt({ onClose }: { onClose: () => void }) {
             <img src={`/sprites/${skin.id}/idle.png`} alt="" className="h-16 w-16 object-contain opacity-70" />
           )}
         </div>
-        <p className="mt-3 font-display text-3xl leading-none text-gold">{displayName(save, "en")}</p>
+        <p className="mt-3 font-display text-3xl leading-none text-gold">{displayName(save, save.lang)}</p>
         {result && (
           <div className="mt-3 flex items-end justify-center gap-5">
             <Mini n={result.floor} l="Floor" />

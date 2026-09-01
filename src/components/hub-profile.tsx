@@ -8,12 +8,13 @@ import { StatusDot, statusLabel } from "@/components/status-dot";
 import { StatusPicker } from "@/components/status-picker";
 import { BADGES, badgeHint, badgeName } from "@/game/achievements";
 import { applyShake, applySound } from "@/game/haptics";
+import { t } from "@/game/i18n";
 import { rankName } from "@/game/ranks";
 import { makeRoomCode } from "@/game/room";
 import { SKIN_PRICE, WEAPON_SHOP } from "@/game/shop";
 import { SKINS } from "@/game/sprites";
 import { useGame } from "@/game/store";
-import type { PresenceStatus, WeaponId } from "@/game/types";
+import type { Lang, PresenceStatus, WeaponId } from "@/game/types";
 import { requestAlerts } from "@/lib/alerts";
 import { clientId } from "@/lib/client-id";
 import { inviteFriend, listFriends, purgeMyAccount, removeFriend, type FriendRow } from "@/lib/rime-data";
@@ -28,6 +29,8 @@ export function HubProfile() {
   const wipeSave = useGame((s) => s.wipeSave);
   const user = useCurrentUser();
   const { isPending } = useCurrentUserState();
+  const lang = save.lang;
+  const copy = t(lang);
   const skin = SKINS[save.color % SKINS.length]!;
   const signedIn = !!user && !user.isDevFallback;
   const [crew, setCrew] = useState<FriendRow[]>([]);
@@ -51,8 +54,8 @@ export function HubProfile() {
 
   useEffect(() => {
     loadCrew();
-    const t = window.setInterval(loadCrew, 8000);
-    return () => window.clearInterval(t);
+    const tmr = window.setInterval(loadCrew, 8000);
+    return () => window.clearInterval(tmr);
   }, [selfId]);
 
   const setStatus = (status: PresenceStatus) => {
@@ -113,7 +116,7 @@ export function HubProfile() {
   return (
     <div data-arcade-root className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3 pb-6">
       <button type="button" className="mb-2 self-start text-sm text-muted" onClick={() => setHub("home")}>
-        ← Back
+        ← {copy.back}
       </button>
 
       <div className="rounded-3xl border border-line bg-surface p-4 text-center">
@@ -132,11 +135,11 @@ export function HubProfile() {
         <input
           value={save.name}
           maxLength={12}
-          placeholder="Your name"
+          placeholder={copy.enterName}
           onChange={(e) => patchSave({ name: e.target.value })}
           className="mt-2 h-11 w-full rounded-xl border border-line bg-bg px-3 text-center font-display text-2xl text-fg outline-none"
         />
-        <p className="mt-1 text-sm text-ice">{rankName(save.bestFloor, "en")}</p>
+        <p className="mt-1 text-sm text-ice">{rankName(save.bestFloor, lang)}</p>
         <p className="font-display text-2xl text-gold">{save.coins} coins</p>
         <div className="mt-3">
           <StatusPicker value={save.status} onChange={setStatus} />
@@ -144,13 +147,13 @@ export function HubProfile() {
       </div>
 
       <div className="mt-3 grid grid-cols-4 gap-1.5 text-center">
-        <Stat n={save.bestFloor} l="Best" />
-        <Stat n={save.bestScore} l="Score" />
-        <Stat n={save.bestCombo} l="Combo" />
-        <Stat n={save.games} l="Runs" />
+        <Stat n={save.bestFloor} l={copy.best} />
+        <Stat n={save.bestScore} l={copy.score} />
+        <Stat n={save.bestCombo} l={copy.combo} />
+        <Stat n={save.games} l={copy.gamesPlayed} />
       </div>
 
-      <h2 className="mt-5 font-display text-2xl text-ice">Settings</h2>
+      <h2 className="mt-5 font-display text-2xl text-ice">{copy.settings}</h2>
       <div className="mt-2 rounded-2xl border border-line bg-surface p-4">
         <FeelTiles
           mute={save.mute}
@@ -164,6 +167,29 @@ export function HubProfile() {
             applyShake(on);
           }}
         />
+        <div className="mt-4">
+          <p className="mb-2 text-center text-[11px] font-bold tracking-wide text-muted uppercase">
+            {copy.lang}
+          </p>
+          <div className="grid grid-cols-2 gap-2" data-testid="lang-toggle">
+            {(["he", "en"] as Lang[]).map((code) => {
+              const on = lang === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  data-testid={`lang-${code}`}
+                  onClick={() => patchSave({ lang: code })}
+                  className={`h-12 rounded-xl border-2 font-display text-2xl tracking-wide active:scale-95 ${
+                    on ? "border-ice bg-ice/15 text-ice" : "border-line bg-bg text-muted"
+                  }`}
+                >
+                  {code === "he" ? "עב" : "EN"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div className="mt-4 grid grid-cols-2 gap-3">
           <PlaqueBtn
             src={save.alerts ? "/ui/set-alerts-on.jpg" : "/ui/set-alerts-off.jpg"}
@@ -312,7 +338,7 @@ export function HubProfile() {
         })}
       </div>
 
-      <h2 className="mt-5 font-display text-2xl text-ice">Badges</h2>
+      <h2 className="mt-5 font-display text-2xl text-ice">{copy.tabBadges}</h2>
       <div className="mt-2 grid grid-cols-2 gap-2">
         {BADGES.map((b) => {
           const got = save.badges.includes(b.id);
@@ -321,8 +347,8 @@ export function HubProfile() {
               key={b.id}
               className={`rounded-2xl border px-3 py-2 ${got ? "border-gold bg-gold/10" : "border-line bg-surface opacity-50"}`}
             >
-              <p className="text-sm font-bold">{badgeName(b, "en")}</p>
-              <p className="text-[10px] text-muted">{got ? "Unlocked" : badgeHint(b, "en")}</p>
+              <p className="text-sm font-bold">{badgeName(b, lang)}</p>
+              <p className="text-[10px] text-muted">{got ? copy.unlocked : badgeHint(b, lang)}</p>
             </div>
           );
         })}

@@ -10,18 +10,19 @@ import { InstallSheet } from "@/components/install-sheet";
 import { LobbyView } from "@/components/lobby-view";
 import { NoteInbox } from "@/components/note-inbox";
 import { audioBus } from "@/game/audio";
-import { t } from "@/game/i18n";
+import { dir, t } from "@/game/i18n";
 import { useGame } from "@/game/store";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export function RimeApp() {
   const screen = useGame((s) => s.screen);
   const result = useGame((s) => s.result);
+  const lang = useGame((s) => s.save.lang);
 
   useEffect(() => {
-    document.documentElement.lang = "en";
-    document.documentElement.dir = "ltr";
-  }, []);
+    document.documentElement.lang = lang;
+    document.documentElement.dir = dir(lang);
+  }, [lang]);
 
   useEffect(() => {
     try {
@@ -96,7 +97,8 @@ function Hub() {
 
 function Results() {
   const result = useGame((s) => s.result)!;
-  const copy = t("en");
+  const lang = useGame((s) => s.save.lang);
+  const copy = t(lang);
   const setScreen = useGame((s) => s.setScreen);
   const setResult = useGame((s) => s.setResult);
   const replay = useGame((s) => s.replay);

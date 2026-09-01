@@ -64,7 +64,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
   const [online, setOnline] = useState<PresenceRow[]>([]);
   const [added, setAdded] = useState("");
   const [pinged, setPinged] = useState("");
-  const name = displayName(save, "en");
+  const name = displayName(save, save.lang);
   const link = inviteUrl(code);
   const p2p = useP2PRoom({ room: roomId(code), name });
 
@@ -139,7 +139,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
     if (fillBots) {
       const need = Math.max(0, 4 - (1 + others.filter((o) => o.ready).length));
       for (let i = 0; i < need; i++) {
-        bots.push({ id: `bot-${i}`, name: botName(i, "en"), color: (save.color + 1 + i) % 4 });
+        bots.push({ id: `bot-${i}`, name: botName(i, save.lang), color: (save.color + 1 + i) % 4 });
       }
     }
     const seed = (Math.random() * 1e9) | 0;

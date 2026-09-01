@@ -10,7 +10,7 @@ import { UserPlus } from "lucide-react";
 export function HubBoard() {
   const save = useGame((s) => s.save);
   const setHub = useGame((s) => s.setHub);
-  const copy = t("en");
+  const copy = t(save.lang);
   const [rows, setRows] = useState<BoardRow[] | null>(null);
   const [online, setOnline] = useState(0);
   const [waiting, setWaiting] = useState(0);
@@ -47,7 +47,7 @@ export function HubBoard() {
   return (
     <div className="flex min-h-0 flex-1 flex-col px-5 pt-4">
       <button type="button" className="mb-2 self-start text-sm text-muted" onClick={() => setHub("home")}>
-        ← Back
+        ← {copy.back}
       </button>
       <h1 className="arcade-title font-display text-4xl text-ice">{copy.tabBoard}</h1>
       <p className="text-sm text-muted">
