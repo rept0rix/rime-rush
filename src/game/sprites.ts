@@ -141,9 +141,26 @@ export class SpriteBank {
   }
 
   creep(kind: string, t: number): HTMLImageElement | null {
+    return this.creepFrame(kind, t, "idle");
+  }
+
+  /** Pick a readable attack pose without new art: wind favors late frames, lunge mid frames. */
+  creepFrame(kind: string, t: number, mode: "idle" | "wind" | "lunge" = "idle"): HTMLImageElement | null {
     const frames = this.creeps.get(kind);
     if (!frames || frames.length === 0) return null;
-    return frames[Math.floor(Math.max(0, t)) % frames.length] ?? frames[0] ?? null;
+    const n = frames.length;
+    const base = Math.floor(Math.max(0, t));
+    let i: number;
+    if (mode === "wind") {
+      // Favor coiled/strike frames 2–3.
+      i = n <= 2 ? base % n : 2 + (base % Math.max(1, n - 2));
+    } else if (mode === "lunge") {
+      // Favor mid lunge frames 1–2.
+      i = n <= 1 ? 0 : 1 + (base % Math.min(2, n - 1));
+    } else {
+      i = base % n;
+    }
+    return frames[i % n] ?? frames[0] ?? null;
   }
 
   ledge(index: number): LedgeBlit | null {

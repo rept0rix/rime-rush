@@ -39,7 +39,8 @@ export function spawnCreep(world: World, floor: number): Creep | null {
 
 export function stepCreep(c: Creep, world: World, dt: number, prey: Player | undefined): void {
   c.hurtT = Math.max(0, c.hurtT - dt);
-  const animRate = c.kind === "bat" ? 12 : c.kind === "raider" ? 6 : 8;
+  let animRate = c.kind === "bat" ? 12 : c.kind === "raider" ? 6 : 8;
+  if (c.windup > 0 && (c.kind === "raider" || c.kind === "ember")) animRate *= 1.55;
   c.animT += dt * animRate;
 
   const aggro =

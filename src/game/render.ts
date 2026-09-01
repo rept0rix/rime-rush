@@ -755,37 +755,216 @@ function drawCreeps(ctx: CanvasRenderingContext2D, creeps: Creep[], cam: Cam, vi
   for (const c of creeps) {
     if (!c.alive) continue;
     const sy = worldToScreen(c.y, cam, viewH);
-    if (sy < -40 || sy > viewH + 40) continue;
-    const img = sprites.creep(c.kind, c.animT);
-    const flash = c.windup > 0.2;
+    if (sy < -50 || sy > viewH + 50) continue;
+
+    const kind = c.kind;
+    const dh =
+      kind === "raider" ? 60 : kind === "ember" ? 54 : kind === "bat" ? 44 : 42;
+    const barW = kind === "raider" ? 28 : kind === "ember" ? 24 : kind === "bat" ? 20 : 22;
+    const grounded = kind === "rat" || kind === "raider";
+    const telegraphOn =
+      kind === "raider" ? c.windup > 0.35 : c.windup > 0.25;
+
+    const mode: "idle" | "wind" | "lunge" =
+      c.windup > 0.25 ? "wind" : c.windup < 0 ? "lunge" : "idle";
+    const img = sprites.creepFrame(kind, c.animT, mode);
+
+    // Soft contact shadow for grounded fighters.
+    if (grounded) {
+      ctx.save();
+      ctx.fillStyle = "rgba(8,6,4,0.32)";
+      ctx.beginPath();
+      const sw = kind === "raider" ? 18 : 14;
+      ctx.ellipse(c.x, sy + 2, sw, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Directional fighter telegraph (not a blob ellipse).
+    if (telegraphOn) {
+      drawCreepTelegraph(ctx, c.x, sy, c.facing, kind, dh);
+    }
+
     ctx.save();
     ctx.translate(c.x, sy);
     if (c.hurtT > 0) ctx.globalAlpha = 0.65;
-    if (flash) {
-      ctx.fillStyle = c.kind === "raider" ? "rgba(255,120,40,0.45)" : "rgba(255,80,80,0.35)";
-      const er = c.kind === "raider" ? 30 : 22;
-      ctx.beginPath();
-      ctx.ellipse(0, -18, er, er, 0, 0, Math.PI * 2);
-      ctx.fill();
+
+    // Idle bob only when not coiling or lunging.
+    let bob = 0;
+    if (c.windup === 0) {
+      bob = Math.sin(c.animT * 2) * (kind === "bat" || kind === "ember" ? 2 : 1);
     }
+    ctx.translate(0, bob);
+
+    // Face first, then lean/pose in local facing space.
     ctx.scale(c.facing, 1);
+
+    let sx = 1;
+    let syScale = 1;
+    let lean = 0;
+    if (c.windup > 0) {
+      // Coil / crouch telegraph.
+      const t = Math.min(1, c.windup / (kind === "raider" ? 0.85 : 0.45));
+      sx = 1.06 + 0.04 * t;
+      syScale = 0.92 - 0.04 * t;
+      lean = -(0.12 + 0.06 * t); // back-lean away from strike
+    } else if (c.windup < 0) {
+      // Stretch / lunge recovery.
+      sx = 1.12;
+      syScale = 0.9;
+      lean = 0.15 + Math.min(0.07, -c.windup * 0.15); // lean into facing
+    }
+
+    ctx.rotate(lean);
+    ctx.scale(sx, syScale);
+
     if (img) {
-      const dh = c.kind === "raider" ? 46 : c.kind === "bat" ? 34 : 36;
       const dw = dh * (img.width / img.height);
+      // 1px dark silhouette assist for edge read on busy BG.
+      ctx.save();
+      ctx.globalAlpha *= 0.35;
+      ctx.drawImage(img, -dw / 2 + 1, -dh + 1, dw, dh);
+      ctx.restore();
       ctx.drawImage(img, -dw / 2, -dh, dw, dh);
     } else {
-      ctx.fillStyle =
-        c.kind === "ember" ? "#ff4d8a" : c.kind === "bat" ? "#6a4a88" : c.kind === "raider" ? "#8a3a28" : "#5a3220";
-      const bw = c.kind === "raider" ? 14 : 10;
-      const bh = c.kind === "raider" ? 28 : 22;
-      roundRect(ctx, -bw, -bh, bw * 2, bh, 6);
-      ctx.fill();
+      drawCreepStick(ctx, kind, dh);
     }
     ctx.restore();
+
+    // HP bar above sprite top.
+    const barY = sy - dh - 6 + bob;
     ctx.fillStyle = "rgba(12,8,6,0.65)";
-    ctx.fillRect(c.x - 10, sy - 28, 20, 3);
+    ctx.fillRect(c.x - barW / 2, barY, barW, 3);
     ctx.fillStyle = "#ff4d8a";
-    ctx.fillRect(c.x - 10, sy - 28, 20 * Math.max(0, c.hp / c.maxHp), 3);
+    ctx.fillRect(c.x - barW / 2, barY, barW * Math.max(0, c.hp / c.maxHp), 3);
+  }
+}
+
+function drawCreepTelegraph(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  sy: number,
+  facing: 1 | -1,
+  kind: Creep["kind"],
+  dh: number,
+): void {
+  const chestY = sy - dh * 0.55;
+  ctx.save();
+  ctx.translate(x, chestY);
+  ctx.scale(facing, 1);
+
+  if (kind === "raider") {
+    // Long orange wedge + thin dagger-line flash.
+    ctx.fillStyle = "rgba(255,140,40,0.28)";
+    ctx.beginPath();
+    ctx.moveTo(4, -4);
+    ctx.lineTo(38, -10);
+    ctx.lineTo(42, 0);
+    ctx.lineTo(38, 10);
+    ctx.lineTo(4, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,200,80,0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(8, 0);
+    ctx.lineTo(44, 0);
+    ctx.stroke();
+  } else if (kind === "ember") {
+    // Hot short cone + radial spark ticks.
+    ctx.fillStyle = "rgba(255,80,60,0.3)";
+    ctx.beginPath();
+    ctx.moveTo(2, 0);
+    ctx.lineTo(26, -12);
+    ctx.lineTo(28, 0);
+    ctx.lineTo(26, 12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,180,60,0.55)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) {
+      const a = -0.7 + i * 0.35;
+      ctx.beginPath();
+      ctx.moveTo(10 * Math.cos(a), 10 * Math.sin(a));
+      ctx.lineTo(20 * Math.cos(a), 20 * Math.sin(a));
+      ctx.stroke();
+    }
+  } else if (kind === "bat") {
+    // Wing-flash chevron.
+    ctx.strokeStyle = "rgba(180,140,255,0.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(6, -10);
+    ctx.lineTo(18, 0);
+    ctx.lineTo(6, 10);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(12, -14);
+    ctx.lineTo(26, 0);
+    ctx.lineTo(12, 14);
+    ctx.stroke();
+  } else {
+    // Rat: low red snout stab line.
+    ctx.strokeStyle = "rgba(255,70,70,0.65)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(2, 6);
+    ctx.lineTo(24, 4);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,60,60,0.25)";
+    ctx.beginPath();
+    ctx.moveTo(4, 2);
+    ctx.lineTo(22, 2);
+    ctx.lineTo(24, 6);
+    ctx.lineTo(4, 10);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawCreepStick(ctx: CanvasRenderingContext2D, kind: Creep["kind"], dh: number): void {
+  const col =
+    kind === "ember" ? "#ff4d8a" : kind === "bat" ? "#6a4a88" : kind === "raider" ? "#8a3a28" : "#5a3220";
+  const scale = dh / 42;
+  ctx.fillStyle = col;
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 2.5 * scale;
+  ctx.lineCap = "round";
+  // Legs
+  ctx.beginPath();
+  ctx.moveTo(-5 * scale, 0);
+  ctx.lineTo(-3 * scale, -14 * scale);
+  ctx.moveTo(5 * scale, 0);
+  ctx.lineTo(3 * scale, -14 * scale);
+  ctx.stroke();
+  // Torso
+  ctx.beginPath();
+  ctx.moveTo(0, -14 * scale);
+  ctx.lineTo(0, -28 * scale);
+  ctx.stroke();
+  // Head
+  ctx.beginPath();
+  ctx.arc(0, -34 * scale, 6 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  // Kind cue: wings / dagger / snout
+  if (kind === "bat") {
+    ctx.beginPath();
+    ctx.moveTo(0, -24 * scale);
+    ctx.lineTo(-14 * scale, -20 * scale);
+    ctx.moveTo(0, -24 * scale);
+    ctx.lineTo(14 * scale, -20 * scale);
+    ctx.stroke();
+  } else if (kind === "raider") {
+    ctx.beginPath();
+    ctx.moveTo(2 * scale, -22 * scale);
+    ctx.lineTo(16 * scale, -18 * scale);
+    ctx.stroke();
+  } else if (kind === "rat") {
+    ctx.beginPath();
+    ctx.moveTo(4 * scale, -34 * scale);
+    ctx.lineTo(12 * scale, -32 * scale);
+    ctx.stroke();
   }
 }
 
