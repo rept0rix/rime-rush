@@ -116,7 +116,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
     });
 
     const onVis = () => {
-      if (!document.hidden) engine.audio.resume();
+      engine.audio.handleVisibility();
     };
     document.addEventListener("visibilitychange", onVis);
 

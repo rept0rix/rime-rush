@@ -23,6 +23,7 @@ export class AudioBus {
   private sfx: GainNode | null = null;
   private music: GainNode | null = null;
   private muted = false;
+  private pageHidden = false;
   private scene: Scene = "off";
   private nextNote = 0;
   private step = 0;
@@ -94,10 +95,44 @@ export class AudioBus {
     window.addEventListener("keydown", go, { capture: true });
     window.addEventListener("touchstart", go, { capture: true });
     window.addEventListener("touchend", go, { capture: true });
-    window.addEventListener("focus", () => this.resume());
-    document.addEventListener("visibilitychange", () => {
+    window.addEventListener("focus", () => {
       if (!document.hidden) this.resume();
     });
+    document.addEventListener("visibilitychange", () => this.handleVisibility());
+  }
+
+  handleVisibility(): void {
+    if (document.hidden) this.suspendForBackground();
+    else this.resume();
+  }
+
+  suspendForBackground(): void {
+    this.pageHidden = true;
+    this.pauseStems();
+    try {
+      this.htmlJump?.pause();
+    } catch {
+      /* ignore */
+    }
+    try {
+      this.htmlPing?.pause();
+    } catch {
+      /* ignore */
+    }
+    for (const s of Object.values(this.stems)) {
+      if (!s?.el) continue;
+      try {
+        s.el.pause();
+      } catch {
+        /* ignore */
+      }
+      s.el.muted = true;
+    }
+    if (this.master && this.ctx) {
+      this.master.gain.setValueAtTime(0, this.ctx.currentTime);
+    }
+    this.silenceVoice();
+    if (this.ctx?.state === "running") void this.ctx.suspend();
   }
 
   setLang(lang: "he" | "en"): void {
@@ -259,7 +294,7 @@ export class AudioBus {
   }
 
   private resumeStems(): void {
-    if (this.muted) return;
+    if (this.muted || this.pageHidden) return;
     for (const s of Object.values(this.stems)) {
       if (!s?.el || s.target <= 0.02) continue;
       if (s.el.paused) {
@@ -393,8 +428,18 @@ export class AudioBus {
   }
 
   resume(): void {
+    if (typeof document !== "undefined" && document.hidden) return;
+    this.pageHidden = false;
+    if (this.muted) {
+      this.applyMute();
+      return;
+    }
     if (this.ctx?.state === "suspended") void this.ctx.resume();
-    if (!this.muted) this.resumeStems();
+    if (this.master && this.ctx) {
+      this.master.gain.setValueAtTime(1, this.ctx.currentTime);
+    }
+    this.applyStemMix(true);
+    this.resumeStems();
   }
 
   setScene(scene: Scene): void {
