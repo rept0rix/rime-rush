@@ -24,6 +24,8 @@ export class AudioBus {
   private music: GainNode | null = null;
   private muted = false;
   private pageHidden = false;
+  private musicBase = 0.28;
+  private lastDuckAt = 0;
   private scene: Scene = "off";
   private nextNote = 0;
   private step = 0;
@@ -64,7 +66,7 @@ export class AudioBus {
       this.sfx = this.ctx.createGain();
       this.music = this.ctx.createGain();
       this.sfx.gain.value = 0.55;
-      this.music.gain.value = 0.28;
+      this.music.gain.value = this.musicBase;
       this.sfx.connect(this.master);
       this.music.connect(this.master);
       this.master.connect(this.ctx.destination);
@@ -438,6 +440,11 @@ export class AudioBus {
     if (this.master && this.ctx) {
       this.master.gain.setValueAtTime(1, this.ctx.currentTime);
     }
+    if (this.music && this.ctx) {
+      const t = this.ctx.currentTime;
+      this.music.gain.cancelScheduledValues(t);
+      this.music.gain.setValueAtTime(this.musicBase, t);
+    }
     this.applyStemMix(true);
     this.resumeStems();
   }
@@ -461,6 +468,7 @@ export class AudioBus {
     const n = Math.min(40, combo);
     const start = 180 + n * 8;
     const peak = 420 + n * 16;
+    this.duckStems(0.35);
     this.slide(start, peak, 0.1, "sine", 0.16);
     this.slide(peak * 0.5, start * 0.6, 0.18, "triangle", 0.07);
   }
@@ -477,6 +485,7 @@ export class AudioBus {
   combo(n: number): void {
     this.heat = n;
     this.applyStemMix();
+    this.duckStems(0.42);
     const root = 280 + Math.min(18, n) * 8;
     this.blip(root, 0.14, "sine", 0.1);
     this.blip(root * 1.5, 0.18, "sine", 0.07, 0.05);
@@ -520,6 +529,7 @@ export class AudioBus {
   }
 
   power(): void {
+    this.duckStems(0.42);
     this.blip(520, 0.12, "sine", 0.07);
     this.blip(780, 0.16, "triangle", 0.05, 0.07);
     this.kid("power");
@@ -530,6 +540,7 @@ export class AudioBus {
   }
 
   hit(): void {
+    this.duckStems(0.38);
     this.slide(180, 70, 0.1, "sine", 0.1);
   }
 
@@ -539,6 +550,7 @@ export class AudioBus {
 
   scream(): void {
     if (!this.ctx || !this.sfx || this.muted) return;
+    this.duckStems(0.5, 0.035, 0.12, 0.25);
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const osc2 = this.ctx.createOscillator();
@@ -562,6 +574,7 @@ export class AudioBus {
   }
 
   splat(): void {
+    this.duckStems(0.42);
     this.slide(90, 40, 0.22, "sine", 0.12);
   }
 
@@ -624,6 +637,7 @@ export class AudioBus {
 
   private yell(kind: YellKind, gain: number): void {
     if (!this.ctx || !this.sfx || this.muted) return;
+    this.duckStems(0.5, 0.035, 0.1, 0.22);
     const now = this.ctx.currentTime;
     const p = YELLS[kind];
     const osc = this.ctx.createOscillator();
@@ -658,6 +672,22 @@ export class AudioBus {
     } catch {
       /* ignore */
     }
+  }
+
+
+  private duckStems(depth = 0.42, attack = 0.035, hold = 0.07, release = 0.2): void {
+    if (!this.ctx || !this.music || this.muted || this.pageHidden) return;
+    const nowMs = performance.now();
+    if (nowMs - this.lastDuckAt < 45) return;
+    this.lastDuckAt = nowMs;
+    const now = this.ctx.currentTime;
+    const g = this.music.gain;
+    const ducked = Math.max(0.0001, this.musicBase * (1 - depth));
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(g.value, now);
+    g.linearRampToValueAtTime(ducked, now + attack);
+    g.linearRampToValueAtTime(ducked, now + attack + hold);
+    g.linearRampToValueAtTime(this.musicBase, now + attack + hold + release);
   }
 
   private startLoop(): void {
