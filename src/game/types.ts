@@ -229,4 +229,5 @@ export interface SaveData {
   authProvider: "" | "google" | "x";
   status: PresenceStatus;
   alerts: boolean;
+  coachLeft: number;
 }

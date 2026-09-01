@@ -31,6 +31,7 @@ interface Props {
 export function GameView({ mode, seed, bots = [], net }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<RimeEngine | null>(null);
+  const coachConsumedRef = useRef(false);
   const save = useGame((s) => s.save);
   const setScreen = useGame((s) => s.setScreen);
   const setResult = useGame((s) => s.setResult);
@@ -74,6 +75,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
         mute: save.mute,
         bots: botList,
         weapon: save.weapon ?? "blade",
+        coach: save.coachLeft > 0,
       },
       {
         onHud: (h) => {
@@ -105,6 +107,10 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
       },
     );
     engineRef.current = engine;
+    if (save.coachLeft > 0 && !coachConsumedRef.current) {
+      coachConsumedRef.current = true;
+      patchSave({ coachLeft: save.coachLeft - 1 });
+    }
     void engine.start().then(() => setReady(true));
 
     const unsub = net?.onMessage((from, data, channel) => {

@@ -3,7 +3,7 @@ import type { Lang, PresenceStatus, SaveData } from "./types";
 export type { SaveData };
 
 const KEY = "rime-rush-save-v1";
-const SAVE_VERSION = 8;
+const SAVE_VERSION = 9;
 
 function cleanStatus(v: unknown): PresenceStatus {
   return v === "offline" || v === "waiting" ? v : "online";
@@ -49,6 +49,7 @@ function baseDefaults(): SaveData {
     authProvider: "",
     status: "online",
     alerts: true,
+    coachLeft: 3,
   };
 }
 
@@ -70,6 +71,13 @@ function migrate(raw: SaveData): SaveData {
     status: cleanStatus((raw as SaveData).status),
     alerts: raw.alerts !== false,
   };
+  if (prevVersion < 9) {
+    merged.coachLeft = (raw.games ?? 0) >= 3 ? 0 : 3;
+  } else {
+    merged.coachLeft = typeof (raw as { coachLeft?: unknown }).coachLeft === "number"
+      ? (raw as SaveData).coachLeft
+      : 3;
+  }
   if (!merged.weapon) merged.weapon = "blade";
   if (merged.weapon && !merged.ownedWeapons.includes(merged.weapon)) {
     merged.ownedWeapons = [...merged.ownedWeapons, merged.weapon];

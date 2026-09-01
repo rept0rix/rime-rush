@@ -111,6 +111,7 @@ export interface Boot {
   weapon?: WeaponId;
   raceFloor?: number;
   attract?: boolean;
+  coach?: boolean;
 }
 
 interface Shot {
@@ -160,6 +161,7 @@ export class RimeEngine {
 	hitstop = 0;
 	showedGo = false;
 	coachUntil = 5;
+	coachEnabled = false;
 	attract = false;
 	attractDir = 1;
 	hurryStage = -1;
@@ -199,6 +201,8 @@ export class RimeEngine {
 		this.shakeOn = boot.shake;
 		this.hooks = hooks;
 		this.attract = !!boot.attract;
+		this.coachEnabled = !!boot.coach && !boot.attract;
+		this.coachUntil = this.coachEnabled ? 3.2 : 0;
 		this.audio.setMute(boot.mute);
 		this.audio.setLang(boot.lang);
 		this.debugOn = false;
@@ -394,7 +398,7 @@ export class RimeEngine {
 		this.world.killY = -40;
 		this.killY = -40;
 		this.showedGo = false;
-		this.coachUntil = 3.2;
+		this.coachUntil = this.coachEnabled ? 3.2 : 0;
 		this.popups = [];
 		this.particles = [];
 		this.shots = [];
@@ -1364,7 +1368,7 @@ export class RimeEngine {
 			floor: p.floor
 		});
 		const copy = t(this.lang);
-		const showCoach = !!p && p.alive && p.combo < 2 && this.time < this.coachUntil && this.time > .6;
+		const showCoach = !!p && p.alive && p.combo < 2 && this.time < this.coachUntil && this.time > 0.2;
 		const dist = p ? p.y - this.cam.y : 200;
 		const r = p ? speedRatio(p.vx) : 0;
 		this.hooks.onHud({
