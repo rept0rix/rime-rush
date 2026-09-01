@@ -194,7 +194,7 @@ export function stepPlayer(
 
   p.spin = 0;
   p.spinV = 0;
-  p.squash += (1 - p.squash) * Math.min(1, 14 * dt);
+  p.squash += (1 - p.squash) * Math.min(1, F.SQUASH_RECOVER * dt);
 
   const hb = hitbox(p);
   if (p.y > 8) {
@@ -275,7 +275,10 @@ function integrate(p: Player, world: World, dt: number, juice: JuiceSink): void 
         if (f.kind === "spring") f.pulseT = 0.42;
         else if (f.kind === "check") f.pulseT = 0.28;
         if (!wasGround) {
-          p.squash = f.kind === "spring" ? 0.55 : 0.7;
+          const impactVy = p.vy;
+          if (f.kind === "spring") p.squash = F.LAND_SQUASH_SPRING;
+          else if (impactVy < -520) p.squash = F.LAND_SQUASH_HARD;
+          else p.squash = F.LAND_SQUASH;
           juice.land(p, f);
           const edge = Math.min(p.x - f.x, f.x + f.w - p.x);
           if (edge < 12 && Math.abs(p.vx) > 40) juice.close(p);
@@ -314,7 +317,7 @@ function bounceUp(p: Player, juice: JuiceSink): void {
   p.airT = 0;
   p.spin = 0;
   p.spinV = 0;
-  p.squash = 1.22;
+  p.squash = F.JUMP_STRETCH;
   juice.jump(p);
 }
 
@@ -389,10 +392,12 @@ export function collidePlayers(a: Player, b: Player, juice: JuiceSink): void {
     if (a.hurtT <= 0) {
       a.hp -= dmg;
       a.hurtT = 0.35;
+      a.squash = F.HIT_STRETCH;
     }
     if (b.hurtT <= 0) {
       b.hp -= dmg;
       b.hurtT = 0.35;
+      b.squash = F.HIT_STRETCH;
     }
   }
 }

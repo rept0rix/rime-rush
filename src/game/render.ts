@@ -600,21 +600,31 @@ function drawPlayer(
     ctx.rotate(p.spin || 0.6);
     ctx.globalAlpha = 0.9;
   }
+  const sq = p.squash;
+  const squashX = sq < 1 ? 1 + (1 - sq) * 0.85 : 1 / Math.sqrt(sq);
+  const squashY = sq;
+  const shadowW = sq < 0.85 ? 14 * (1 + (1 - sq) * 1.1) : 14;
   ctx.beginPath();
-  ctx.ellipse(0, 4, 14, 4.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 4, shadowW, 4.5, 0, 0, Math.PI * 2);
   ctx.fillStyle = "rgba(10,8,4,0.32)";
   ctx.fill();
 
   const frozen = p.effects.frozenT > 0;
   const lean = p.grounded ? 0 : Math.max(-0.18, Math.min(0.18, p.vx * 0.00045));
   ctx.rotate(lean);
-  ctx.scale(p.facing, 1);
+  ctx.scale(p.facing * squashX, squashY);
   if (frozen) ctx.globalAlpha = 0.7;
 
   if (img) ctx.drawImage(img, -dw / 2, -dh, dw, dh);
   else {
     ctx.fillStyle = color;
     roundRect(ctx, -12, -40, 24, 40, 10);
+    ctx.fill();
+  }
+
+  if (isLocal && p.hurtT > 0) {
+    ctx.fillStyle = `rgba(255,77,138,${p.hurtT * 0.45})`;
+    roundRect(ctx, -dw / 2 - 2, -dh - 2, dw + 4, dh + 4, 10);
     ctx.fill();
   }
 

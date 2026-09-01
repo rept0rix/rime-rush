@@ -34,6 +34,15 @@ export const F = {
   SPAWN_PROTECT: 2.0,
   CAM_FOLLOW: 8.5,
   CAM_LOOKAHEAD: 0.12,
+
+  /** Visual juice — squash/stretch + brief hitstop (draw-only; not hitbox). */
+  LAND_SQUASH: 0.58,
+  LAND_SQUASH_SPRING: 0.5,
+  LAND_SQUASH_HARD: 0.52,
+  JUMP_STRETCH: 1.24,
+  HIT_STRETCH: 1.2,
+  SQUASH_RECOVER: 11,
+  HITSTOP_HIT: 0.05,
 } as const;
 
 export type Band = "idle" | "walk" | "run" | "fast" | "max";

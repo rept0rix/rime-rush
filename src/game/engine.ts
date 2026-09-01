@@ -224,7 +224,7 @@ export class RimeEngine {
 			land: (p, floor) => {
 				if (p.id === this.localId) {
 					this.audio.land();
-					this.shakeOn && buzz(10);
+					this.shakeOn && buzz(12);
 				}
 				const kind = floor?.kind ?? "ice";
 				if (kind === "spring") this.burst(p.x, p.y, 8, "#7cffb2", "spark");
@@ -232,7 +232,7 @@ export class RimeEngine {
 				else if (kind === "check") this.burst(p.x, p.y, 7, "#ffd36a", "spark");
 				else if (kind === "conveyor") this.burst(p.x, p.y, 5, "#7ee7ff", "trail");
 				else this.burst(p.x, p.y, 8, "#b8f0ff", "ice");
-				if (p.id === this.localId) this.punch(.38 + Math.min(.4, p.combo * .05));
+				if (p.id === this.localId) this.punch(.42 + Math.min(.4, p.combo * .05));
 			},
 			wall: (p) => {
 				this.burst(p.x, p.y + 16, 6, "#7ee7ff", "ice");
@@ -808,6 +808,11 @@ export class RimeEngine {
 		}
 		p.hp -= dmg;
 		p.hurtT = .4;
+		p.squash = F.HIT_STRETCH;
+		if (p.id === this.localId) {
+			this.hitstop = Math.max(this.hitstop, F.HITSTOP_HIT);
+			this.punch(0.35);
+		}
 		if (p.hp <= 0) this.kill(p);
 	}
 	hitCreep(c: any, dmg: any, by: any) {
