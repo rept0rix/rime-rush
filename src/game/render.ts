@@ -577,7 +577,8 @@ function drawPlayer(
   const s = p.effects.shrinkT > 0 ? 0.88 : 1;
   const img = sprites.frame(p.anim, p.animT, p.color);
   const ratio = img && img.height > 0 ? img.width / img.height : DRAW_W / DRAW_H;
-  const dh = DRAW_H * s;
+  const size = s * (isLocal ? 1.1 : 0.94);
+  const dh = DRAW_H * size;
   const dw = dh * ratio;
 
   const trail = p.trail ?? [];
@@ -614,6 +615,14 @@ function drawPlayer(
   ctx.rotate(lean);
   ctx.scale(p.facing * squashX, squashY);
   if (frozen) ctx.globalAlpha = 0.7;
+  else if (!isLocal) ctx.globalAlpha *= 0.72;
+
+  if (isLocal) {
+    ctx.strokeStyle = "#7ee7ff";
+    ctx.lineWidth = 2;
+    roundRect(ctx, -dw / 2 - 1, -dh - 1, dw + 2, dh + 2, 10);
+    ctx.stroke();
+  }
 
   if (img) ctx.drawImage(img, -dw / 2, -dh, dw, dh);
   else {
@@ -688,7 +697,7 @@ function drawPlayer(
   }
   ctx.restore();
 
-  const barY = sy - dh - (named && isLocal ? 14 : 8);
+  const barY = sy - dh - (isLocal ? 16 : 8);
   if (isLocal) {
     const bw = 28;
     ctx.fillStyle = "rgba(12,8,6,0.7)";
@@ -701,16 +710,34 @@ function drawPlayer(
     }
   }
 
-  if (named) {
+  if (named || isLocal) {
     const label = isLocal ? (p.combo >= 2 ? `YOU ×${p.combo}` : "YOU") : (p.name || "?").slice(0, 8);
-    ctx.font = "800 9px Rubik, sans-serif";
+    ctx.font = isLocal ? "800 10px Rubik, sans-serif" : "800 8px Rubik, sans-serif";
     ctx.textAlign = "center";
     const ny = barY - 7;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = isLocal ? 3 : 2;
     ctx.strokeStyle = "rgba(12,8,6,0.85)";
     ctx.strokeText(label, p.x, ny);
     ctx.fillStyle = isLocal ? "#7ee7ff" : color;
+    ctx.globalAlpha = isLocal ? 1 : 0.78;
     ctx.fillText(label, p.x, ny);
+    ctx.globalAlpha = 1;
+    if (isLocal) {
+      const pipX = p.x + ctx.measureText(label).width / 2 + 7;
+      const pipY = ny - 3;
+      ctx.beginPath();
+      ctx.moveTo(pipX, pipY - 4);
+      ctx.lineTo(pipX + 4, pipY);
+      ctx.lineTo(pipX, pipY + 4);
+      ctx.lineTo(pipX - 4, pipY);
+      ctx.closePath();
+      ctx.fillStyle = "#7ee7ff";
+      ctx.fill();
+      ctx.fillStyle = "#e8f4ff";
+      ctx.beginPath();
+      ctx.arc(pipX, pipY, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 
