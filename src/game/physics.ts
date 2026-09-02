@@ -10,6 +10,16 @@ import type { Actions } from "./input";
 import type { Floor, Player } from "./types";
 import { floorTop, type World } from "./world";
 
+/** Post-hit i-frames so one overlap cannot land multiple hits. */
+export const HURT_IFRAMES = 0.52;
+/** Seconds after last hurt before out-of-combat HP regen starts. */
+export const COMBAT_LOCK = 1.4;
+/** HP/s once out of combat. ~32 isolated damage recovers in ~3.5s. */
+export const HP_REGEN = 9;
+/** Isolated (not in-combat) hit cap as a fraction of maxHp. */
+export const ISOLATED_HIT_FRAC = 0.32;
+
+
 export function makePlayer(
   id: string,
   name: string,
@@ -52,6 +62,7 @@ export function makePlayer(
     hp: 100,
     maxHp: 100,
     hurtT: 0,
+    combatT: 0,
     trickT: 0,
     effects: {
       frozenT: 0,
@@ -109,8 +120,11 @@ export function stepPlayer(
   if (e.invulnT <= 0) e.shield = false;
   p.slashT = Math.max(0, p.slashT - dt);
   p.hurtT = Math.max(0, p.hurtT - dt);
+  p.combatT = Math.max(0, p.combatT - dt);
   p.weaponT = Math.max(0, p.weaponT - (p.slashT > 0 ? dt * 0.55 : 0));
-  if (p.hurtT <= 0 && p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + 16 * dt);
+  if (p.combatT <= 0 && p.hurtT <= 0 && p.hp < p.maxHp) {
+    p.hp = Math.min(p.maxHp, p.hp + HP_REGEN * dt);
+  }
 
   p.heldMove = input.moveX;
   p.jumpHeld = input.jumpHeld;
@@ -373,6 +387,19 @@ function currentFloor(p: Player, world: World): Floor | null {
   return null;
 }
 
+
+/** Apply incoming damage with isolated-hit cap, i-frames, and combat lock. Returns applied dmg, or 0 if blocked. */
+export function takeHit(p: Player, dmg: number): number {
+  if (!p.alive || p.effects.invulnT > 0 || p.hurtT > 0) return 0;
+  const isolated = p.combatT <= 0;
+  const applied = isolated ? Math.min(dmg, p.maxHp * ISOLATED_HIT_FRAC) : dmg;
+  p.hp -= applied;
+  p.hurtT = HURT_IFRAMES;
+  p.combatT = COMBAT_LOCK;
+  p.squash = F.HIT_STRETCH;
+  return applied;
+}
+
 export function collidePlayers(a: Player, b: Player, juice: JuiceSink): void {
   if (!a.alive || !b.alive) return;
   if (a.effects.invulnT > 0 || b.effects.invulnT > 0) return;
@@ -389,16 +416,8 @@ export function collidePlayers(a: Player, b: Player, juice: JuiceSink): void {
   if (Math.abs(rel) > 110) {
     juice.bump(a, b);
     const dmg = 8 + Math.min(18, Math.abs(rel) * 0.04);
-    if (a.hurtT <= 0) {
-      a.hp -= dmg;
-      a.hurtT = 0.35;
-      a.squash = F.HIT_STRETCH;
-    }
-    if (b.hurtT <= 0) {
-      b.hp -= dmg;
-      b.hurtT = 0.35;
-      b.squash = F.HIT_STRETCH;
-    }
+    takeHit(a, dmg);
+    takeHit(b, dmg);
   }
 }
 

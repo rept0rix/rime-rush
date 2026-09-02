@@ -105,6 +105,7 @@ export interface Player {
   hp: number;
   maxHp: number;
   hurtT: number;
+  combatT: number;
   trickT: number;
   effects: Effects;
   heldMove: number;

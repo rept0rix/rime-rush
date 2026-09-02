@@ -21,6 +21,7 @@ import {
   hitbox,
   makePlayer,
   stepPlayer,
+  takeHit,
   type JuiceSink,
 } from "./physics";
 import { isAttack, randomPower } from "./powers";
@@ -437,6 +438,7 @@ export class RimeEngine {
 			p.hp = 100;
 			p.maxHp = 100;
 			p.hurtT = 0;
+			p.combatT = 0;
 			p.weaponT = 8;
 			p.ammo = 8;
 			p.blade = 5;
@@ -810,9 +812,7 @@ export class RimeEngine {
 			p.effects.invulnT = .6;
 			return;
 		}
-		p.hp -= dmg;
-		p.hurtT = .4;
-		p.squash = F.HIT_STRETCH;
+		if (takeHit(p, dmg) <= 0) return;
 		if (p.id === this.localId) {
 			this.hitstop = Math.max(this.hitstop, F.HITSTOP_HIT);
 			this.punch(0.35);
@@ -868,7 +868,7 @@ export class RimeEngine {
 			stepCreep(c, this.world, dt, prey);
 			if (c.y < this.cam.y - 40) c.alive = false;
 			if (!prey?.alive) continue;
-			if (Math.abs(c.x - prey.x) < (c.kind === "raider" ? 32 : 26) && Math.abs(c.y - prey.y) < (c.kind === "raider" ? 48 : 40) && c.hurtT <= 0) {
+			if (Math.abs(c.x - prey.x) < (c.kind === "raider" ? 32 : 26) && Math.abs(c.y - prey.y) < (c.kind === "raider" ? 48 : 40) && c.hurtT <= 0 && prey.hurtT <= 0 && prey.effects.invulnT <= 0) {
 				const dmg = c.kind === "raider" ? 28 : c.kind === "ember" ? 20 : c.kind === "bat" ? 12 : 16;
 				const knock = c.kind === "raider" ? 220 : 110;
 				this.hurt(prey, dmg);
@@ -1367,7 +1367,6 @@ export class RimeEngine {
 			alive: p.alive,
 			floor: p.floor
 		});
-		const copy = t(this.lang);
 		const showCoach = !!p && p.alive && p.combo < 2 && this.time < this.coachUntil && this.time > 0.2;
 		const dist = p ? p.y - this.cam.y : 200;
 		const r = p ? speedRatio(p.vx) : 0;
@@ -1394,7 +1393,7 @@ export class RimeEngine {
 				};
 			}),
 			killIn: Math.max(0, dist),
-			hint: showCoach ? copy.hintCoach : null,
+			hint: showCoach ? "Hold LEFT / RIGHT. You bounce on your own. Faster = higher." : null,
 			danger: !!p && p.alive && this.time > F.SPAWN_PROTECT && dist < this.viewH * .22,
 			downed: !!p && !p.alive && this.waitingContinue,
 			continueLeft: this.continueT,
