@@ -350,7 +350,7 @@ export class RimeEngine {
 		this.running = false;
 		cancelAnimationFrame(this.raf);
 		this.input.detach();
-		this.audio.cut();
+		this.audio.setScene("off");
 	}
 	setPaused(v: boolean) {
 		this.paused = v;

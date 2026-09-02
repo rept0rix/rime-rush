@@ -84,13 +84,19 @@ export class AudioBus {
     this.kickGraph();
     this.primeHtml();
     this.bindUnlock();
+    const remixThenResume = () => {
+      if (this.scene === "off" || this.muted || this.pageHidden) return;
+      this.applyStemMix(true);
+      this.resumeStems();
+    };
     if (this.stemsReady) {
-      if (!this.muted && !this.pageHidden) this.resumeStems();
+      remixThenResume();
       return;
     }
     this.primeSpeech();
     this.bootStems();
     this.publishTest();
+    remixThenResume();
     if (this.scene !== "off" && !this.muted && !this.pageHidden && !this.usingStems) this.startLoop();
   }
 
@@ -370,6 +376,14 @@ export class AudioBus {
     this.setStemVol("climb", climb, snap);
     this.setStemVol("heat", heat, snap);
     this.setStemVol("rush", rush, snap);
+    for (const s of Object.values(this.stems)) {
+      if (!s?.el || s.target > 0.02) continue;
+      try {
+        s.el.pause();
+      } catch {
+        /* ignore */
+      }
+    }
 
     const rate = this.scene === "game" ? 1 + Math.min(0.14, h * 0.012) : 1;
     for (const id of ["climb", "heat", "rush"] as StemId[]) {
@@ -500,12 +514,15 @@ export class AudioBus {
     if (scene === "off") {
       this.stopLoop();
       this.pauseStems();
-    } else {
-      if (this.usingStems) this.stopLoop();
-      else this.startLoop();
-      if (this.unlocked) this.resumeStems();
+      this.applyStemMix(true);
+      return;
     }
-    if (this.unlocked) this.applyStemMix(false);
+    if (this.usingStems) this.stopLoop();
+    else this.startLoop();
+    if (this.unlocked) {
+      this.applyStemMix(true);
+      this.resumeStems();
+    }
   }
 
   jump(combo: number): void {
