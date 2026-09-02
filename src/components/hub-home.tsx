@@ -1,4 +1,5 @@
 import { ContinueOffer } from "@/components/continue-offer";
+import { MuteButton } from "@/components/mute-button";
 import { ComboHud } from "@/components/combo-hud";
 import { FeelTiles } from "@/components/feel-tiles";
 import { PlayerFace } from "@/components/player-face";
@@ -6,7 +7,7 @@ import { useLiveTower } from "@/components/live-tower";
 import { BellButton } from "@/components/note-inbox";
 import { StatusDot } from "@/components/status-dot";
 import { TouchControls } from "@/components/touch-controls";
-import { Pause, Settings, Volume2, VolumeX } from "lucide-react";
+import { Pause, Settings } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { audioBus } from "@/game/audio";
 import { applyShake, applySound } from "@/game/haptics";
@@ -257,6 +258,7 @@ export function HubHome() {
           <span className="text-sm font-bold">{save.name.trim() || copy.profile}</span>
         </button>
         <div className="flex items-center gap-2">
+          <MuteButton />
           <BellButton />
           <p className="font-display text-lg text-gold">{save.coins}</p>
           <button
@@ -340,17 +342,7 @@ export function HubHome() {
         <div className="hud-in pointer-events-none absolute inset-x-0 top-0 z-40 px-2 pt-[max(8px,env(safe-area-inset-top))]">
           <div className="flex items-center justify-between">
             <div className="pointer-events-auto flex gap-1.5">
-              <IconBtn
-                label={save.mute ? "unmute" : "mute"}
-                onClick={() => {
-                  const next = !save.mute;
-                  patchSave({ mute: next });
-                  applySound(next);
-                  engineRef.current?.setMute(next);
-                }}
-              >
-                {save.mute ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
-              </IconBtn>
+              <MuteButton className="flex size-9 items-center justify-center rounded-full bg-[#1a100c]/80 text-gold" />
               <IconBtn
                 label="pause"
                 onClick={() => {
@@ -437,6 +429,9 @@ export function HubHome() {
 
       {settings && (
         <div data-arcade-root className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-bg/80">
+          <div className="absolute right-3 top-[max(10px,env(safe-area-inset-top))]">
+            <MuteButton />
+          </div>
           <p className="font-display text-6xl text-ice">{copy.pause}</p>
           <FeelTiles
             mute={save.mute}

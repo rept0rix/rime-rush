@@ -1,3 +1,4 @@
+import { MuteButton } from "@/components/mute-button";
 export function ContinueOffer({
   coins,
   cost,
@@ -14,6 +15,9 @@ export function ContinueOffer({
   const ok = coins >= cost;
   return (
     <div className="pointer-events-auto absolute inset-x-0 top-24 z-40 flex flex-col items-center px-4">
+      <div className="absolute right-3 -top-16">
+        <MuteButton />
+      </div>
       <p className="font-display text-4xl text-gold">CONTINUE?</p>
       <p className="text-xs text-muted">{left.toFixed(1)}s</p>
       <button

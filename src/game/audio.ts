@@ -82,7 +82,7 @@ export class AudioBus {
     this.bindUnlock();
     this.bootStems();
     this.publishTest();
-    if (this.scene !== "off") this.startLoop();
+    if (this.scene !== "off" && !this.muted && !this.pageHidden) this.startLoop();
   }
 
   arm(): void {
@@ -173,7 +173,7 @@ export class AudioBus {
   }
 
   private playHtml(a: HTMLAudioElement | null, vol: number): void {
-    if (!a || this.muted) return;
+    if (!a || this.muted || this.pageHidden) return;
     try {
       a.pause();
       a.currentTime = 0;
@@ -399,33 +399,53 @@ export class AudioBus {
 
   setMute(m: boolean): void {
     this.muted = m;
-    if (this.master && this.ctx) {
-      this.master.gain.setValueAtTime(m ? 0 : 1, this.ctx.currentTime);
-    }
-    if (this.htmlJump) {
-      this.htmlJump.muted = m;
-      if (m) this.htmlJump.pause();
-    }
-    if (this.htmlPing) {
-      this.htmlPing.muted = m;
-      if (m) this.htmlPing.pause();
-    }
-    for (const s of Object.values(this.stems)) {
-      if (!s) continue;
-      s.el.muted = m;
-      if (m) {
+    if (m) {
+      if (this.master && this.ctx) {
+        this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+        this.master.gain.setValueAtTime(0, this.ctx.currentTime);
+      }
+      this.stopLoop();
+      this.pauseStems();
+      this.silenceVoice();
+      if (this.htmlJump) {
+        this.htmlJump.muted = true;
+        this.htmlJump.volume = 0;
+        try {
+          this.htmlJump.pause();
+        } catch {
+          /* ignore */
+        }
+      }
+      if (this.htmlPing) {
+        this.htmlPing.muted = true;
+        this.htmlPing.volume = 0;
+        try {
+          this.htmlPing.pause();
+        } catch {
+          /* ignore */
+        }
+      }
+      for (const s of Object.values(this.stems)) {
+        if (!s) continue;
+        s.el.muted = true;
         s.el.volume = 0;
         try {
           s.el.pause();
         } catch {
           /* ignore */
         }
+        if (s.gain && this.ctx) s.gain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
       }
+      return;
     }
-    if (m) this.silenceVoice();
-    else if (this.unlocked) {
+    if (this.htmlJump) this.htmlJump.muted = false;
+    if (this.htmlPing) this.htmlPing.muted = false;
+    if (this.pageHidden) return;
+    this.applyMute();
+    if (this.unlocked) {
       this.applyStemMix(true);
       this.resumeStems();
+      if (this.scene !== "off") this.startLoop();
     }
   }
 
@@ -549,7 +569,7 @@ export class AudioBus {
   }
 
   scream(): void {
-    if (!this.ctx || !this.sfx || this.muted) return;
+    if (!this.ctx || !this.sfx || this.muted || this.pageHidden) return;
     this.duckStems(0.5, 0.035, 0.12, 0.25);
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
@@ -600,7 +620,7 @@ export class AudioBus {
   }
 
   kid(line: KidLine): void {
-    if (this.muted) return;
+    if (this.muted || this.pageHidden) return;
     const now = performance.now();
     if (now - this.lastTalk < 90) return;
     this.lastTalk = now;
@@ -612,7 +632,7 @@ export class AudioBus {
   }
 
   private shout(word: string): void {
-    if (this.muted) return;
+    if (this.muted || this.pageHidden) return;
     try {
       const synth = window.speechSynthesis;
       if (!synth) return;
@@ -636,7 +656,7 @@ export class AudioBus {
   }
 
   private yell(kind: YellKind, gain: number): void {
-    if (!this.ctx || !this.sfx || this.muted) return;
+    if (!this.ctx || !this.sfx || this.muted || this.pageHidden) return;
     this.duckStems(0.5, 0.035, 0.1, 0.22);
     const now = this.ctx.currentTime;
     const p = YELLS[kind];
@@ -773,16 +793,18 @@ export class AudioBus {
 
   private applyMute(): void {
     if (!this.master || !this.ctx) return;
-    this.master.gain.setTargetAtTime(this.muted ? 0 : 1, this.ctx.currentTime, 0.02);
+    const silent = this.muted || this.pageHidden;
+    this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.master.gain.setValueAtTime(silent ? 0 : 1, this.ctx.currentTime);
   }
 
   private blip(freq: number, dur: number, type: OscillatorType, gain: number, delay = 0): void {
-    if (!this.ctx || !this.sfx) return;
+    if (!this.ctx || !this.sfx || this.muted || this.pageHidden) return;
     this.toneAt(freq, dur, type, gain, this.sfx, this.ctx.currentTime + delay);
   }
 
   private slide(from: number, to: number, dur: number, type: OscillatorType, gain: number): void {
-    if (!this.ctx || !this.sfx) return;
+    if (!this.ctx || !this.sfx || this.muted || this.pageHidden) return;
     this.toneAt(from, dur, type, gain, this.sfx, this.ctx.currentTime, to);
   }
 
@@ -795,7 +817,7 @@ export class AudioBus {
     when: number,
     endFreq?: number,
   ): void {
-    if (!this.ctx) return;
+    if (!this.ctx || this.muted || this.pageHidden) return;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.type = type;
@@ -815,7 +837,7 @@ export class AudioBus {
   }
 
   private noiseAt(dur: number, gain: number, freq: number, when: number, dest: GainNode): void {
-    if (!this.ctx) return;
+    if (!this.ctx || this.muted || this.pageHidden) return;
     const n = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
     const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
     const data = buf.getChannelData(0);

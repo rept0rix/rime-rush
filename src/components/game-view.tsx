@@ -1,12 +1,12 @@
 import { ContinueOffer } from "@/components/continue-offer";
+import { MuteButton } from "@/components/mute-button";
 import { ComboHud } from "@/components/combo-hud";
 import { useLiveTower } from "@/components/live-tower";
 import { TouchControls } from "@/components/touch-controls";
-import { Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { botName } from "@/game/bots";
 import { RimeEngine, type HudSnap } from "@/game/engine";
-import { applySound } from "@/game/haptics";
 import { t } from "@/game/i18n";
 import { recordRun } from "@/game/save";
 import { displayName, useGame } from "@/game/store";
@@ -155,17 +155,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
               >
                 {hud.paused ? <Play className="size-4" /> : <Pause className="size-4" />}
               </IconBtn>
-              <IconBtn
-                label={save.mute ? "unmute" : "mute"}
-                onClick={() => {
-                  const next = !save.mute;
-                  patchSave({ mute: next });
-                  applySound(next);
-                  engineRef.current?.setMute(next);
-                }}
-              >
-                {save.mute ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
-              </IconBtn>
+              <MuteButton className="flex size-8 items-center justify-center rounded-full bg-[#1a100c]/70 text-gold" />
             </div>
             <div className="text-center">
               <p className="font-display text-xl leading-none text-fg/90">{hud.score}</p>
@@ -243,6 +233,9 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
 
       {hud?.paused && (
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-bg/70 backdrop-blur-sm">
+          <div className="absolute right-3 top-[max(10px,env(safe-area-inset-top))]">
+            <MuteButton />
+          </div>
           <p className="font-display text-5xl text-ice">{copy.pause}</p>
           <button
             type="button"

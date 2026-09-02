@@ -8,6 +8,7 @@ import { HubHome } from "@/components/hub-home";
 import { HubProfile } from "@/components/hub-profile";
 import { InstallSheet } from "@/components/install-sheet";
 import { LobbyView } from "@/components/lobby-view";
+import { MuteButton } from "@/components/mute-button";
 import { NoteInbox } from "@/components/note-inbox";
 import { audioBus } from "@/game/audio";
 import { dir, t } from "@/game/i18n";
@@ -23,6 +24,10 @@ export function RimeApp() {
     document.documentElement.lang = lang;
     document.documentElement.dir = dir(lang);
   }, [lang]);
+
+  useEffect(() => {
+    audioBus.setMute(useGame.getState().save.mute);
+  }, []);
 
   useEffect(() => {
     try {
@@ -136,6 +141,9 @@ function Results() {
 
   return (
     <div className="absolute inset-0 z-50 flex items-end justify-center pb-[max(20px,env(safe-area-inset-bottom))]">
+      <div className="pointer-events-auto absolute right-3 top-[max(10px,env(safe-area-inset-top))] z-[60]">
+        <MuteButton />
+      </div>
       {showConnect && <ConnectPrompt onClose={() => setHideConnect(true)} />}
       <div className="relative w-[92%] max-w-[360px]">
         <img src="/ui/fell-board.png" alt="" className="w-full object-contain" />

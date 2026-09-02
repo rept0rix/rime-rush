@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { audioBus } from "./audio";
 import { loadSave, writeSave, clearSave, type SaveData } from "./save";
 import type { GameResult, HubTab, Lang, Mode, Screen } from "./types";
 
@@ -36,8 +37,11 @@ export interface GameStore {
   wipeSave: () => void;
 }
 
+const bootSave = loadSave();
+audioBus.setMute(bootSave.mute);
+
 export const useGame = create<GameStore>((set, get) => ({
-  save: loadSave(),
+  save: bootSave,
   screen: "menu",
   hub: "home",
   mode: "solo",
@@ -55,8 +59,13 @@ export const useGame = create<GameStore>((set, get) => ({
     const save = { ...get().save, ...p };
     writeSave(save);
     set({ save });
+    if (typeof p.mute === "boolean") audioBus.setMute(p.mute);
   },
-  wipeSave: () => set({ save: clearSave() }),
+  wipeSave: () => {
+    const save = clearSave();
+    audioBus.setMute(save.mute);
+    set({ save });
+  },
   setScreen: (screen) => set({ screen: screen === "howto" ? "menu" : screen }),
   setHub: (hub) => set({ hub }),
   setMode: (mode) => set({ mode }),

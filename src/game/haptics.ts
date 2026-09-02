@@ -32,12 +32,9 @@ export function bumpShake(root?: Element | null): void {
 }
 
 export function applySound(muted: boolean): void {
-  audioBus.unlock();
-  if (muted) {
-    audioBus.clickOff();
-    window.setTimeout(() => audioBus.setMute(true), 120);
-  } else {
-    audioBus.setMute(false);
+  audioBus.setMute(muted);
+  if (!muted) {
+    audioBus.unlock();
     audioBus.ping();
   }
 }
