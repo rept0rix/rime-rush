@@ -108,6 +108,7 @@ function Results() {
   const setResult = useGame((s) => s.setResult);
   const replay = useGame((s) => s.replay);
   const games = useGame((s) => s.save.games);
+  const bestFloor = useGame((s) => s.save.bestFloor);
   const { user, isPending } = useCurrentUserState();
   const signedIn = !!user && !user.isDevFallback;
   const [hideConnect, setHideConnect] = useState(false);
@@ -164,10 +165,15 @@ function Results() {
               ))}
             </ol>
           )}
-          <div className="mt-3 flex items-center justify-center gap-2">
-            <button type="button" className="active:scale-95" onClick={replay}>
-              <img src="/ui/play.png" alt="Play" className="h-12 w-auto object-contain" />
-            </button>
+          <div className="mt-3 flex items-center justify-center gap-3">
+            <div className="flex flex-col items-center">
+              <button type="button" className="active:scale-95" onClick={replay}>
+                <img src="/ui/play.png" alt="Play" className="play-hungry h-14 w-auto object-contain" />
+              </button>
+              <p className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-gold">
+                {result.floor >= bestFloor ? "NEW BEST — GO" : `BEAT ${bestFloor}`}
+              </p>
+            </div>
             <button type="button" className="active:scale-95" onClick={goHome}>
               <img src="/ui/home.png" alt="Home" className="h-12 w-auto object-contain" />
             </button>
