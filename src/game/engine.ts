@@ -46,6 +46,7 @@ import type {
   WeaponId,
 } from "./types";
 import { floorTop, World, dailySeed } from "./world";
+import { clientId } from "@/lib/client-id";
 import type { LiveClimber } from "@/lib/rime-data";
 
 declare global {
@@ -458,8 +459,12 @@ export class RimeEngine {
 	}
 	syncGhosts(rows: any) {
 		const next = new Set<string>();
+		const selfCid = clientId();
+		const localName = (this.local()?.name ?? "").trim().toLowerCase();
 		for (const row of rows) {
-			if (!row.id || row.id === this.localId) continue;
+			if (!row.id || row.id === this.localId || row.id === selfCid) continue;
+			const rowName = String(row.name ?? "").trim().toLowerCase();
+			if (localName && rowName && rowName === localName) continue;
 			next.add(row.id);
 			const x = Number.isFinite(row.x) && row.x > 8 ? row.x : 195;
 			const y = Number.isFinite(row.y) && row.y > 4 ? row.y : this.world.floorY(Math.max(0, row.floor)) + 22;
@@ -537,6 +542,7 @@ export class RimeEngine {
 		this.pitHit = false;
 	}
 	applyRemote(msg: any) {
+		if (msg.p?.id === this.localId) return;
 		if (msg.t === "state") {
 			const np = msg.p;
 			let row = this.remotes.get(np.id);

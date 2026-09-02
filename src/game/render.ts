@@ -67,8 +67,10 @@ export function drawFrame(
   if (!hideTitle && local && local.combo >= 6) drawSpeedLines(ctx, local, cam, viewW, viewH);
   const named = players.length > 1;
   const sorted = [...players].sort((a, b) => Number(a.id === localId) - Number(b.id === localId));
+  const localName = (local?.name ?? "").trim().toLowerCase();
   for (const p of sorted) {
     if (!p.alive && corpses.length > 0) continue;
+    if (p.id !== localId && localName && (p.name ?? "").trim().toLowerCase() === localName) continue;
     drawPlayer(ctx, p, sprites, cam, viewH, now, p.id === localId, named);
   }
   if (!hideTitle) drawShots(ctx, shots, cam, viewH);
