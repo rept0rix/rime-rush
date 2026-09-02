@@ -51,6 +51,7 @@ export class AudioBus {
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AC) {
       this.primeHtml();
+      if (this.stemsReady) return;
       this.primeSpeech();
       this.bootStemsHtmlOnly();
       return;
@@ -60,6 +61,7 @@ export class AudioBus {
         this.ctx = new AC({ latencyHint: "interactive" });
       } catch {
         this.primeHtml();
+        if (this.stemsReady) return;
         this.primeSpeech();
         this.bootStemsHtmlOnly();
         return;
@@ -463,7 +465,7 @@ export class AudioBus {
     if (this.unlocked) {
       this.applyStemMix(true);
       this.resumeStems();
-      if (this.scene !== "off") this.startLoop();
+      if (this.scene !== "off" && !this.usingStems) this.startLoop();
     }
   }
 
