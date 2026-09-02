@@ -41,6 +41,8 @@ export class AudioBus {
   private stemsReady = false;
   private usingStems = false;
   private filter: BiquadFilterNode | null = null;
+  private sfxVoices = 0;
+  private readonly sfxCap = 6;
   unlocked = false;
 
   unlock(): void {
@@ -77,12 +79,16 @@ export class AudioBus {
       void this.ctx.resume();
     }
     this.kickGraph();
-    this.primeSpeech();
     this.primeHtml();
     this.bindUnlock();
+    if (this.stemsReady) {
+      if (!this.muted && !this.pageHidden) this.resumeStems();
+      return;
+    }
+    this.primeSpeech();
     this.bootStems();
     this.publishTest();
-    if (this.scene !== "off" && !this.muted && !this.pageHidden) this.startLoop();
+    if (this.scene !== "off" && !this.muted && !this.pageHidden && !this.usingStems) this.startLoop();
   }
 
   arm(): void {
@@ -208,6 +214,11 @@ export class AudioBus {
   }
 
   private bootStems(): void {
+    if (this.stemsReady && this.usingStems) {
+      this.stopLoop();
+      this.applyStemMix(true);
+      return;
+    }
     if (!this.ctx || !this.music) {
       this.bootStemsHtmlOnly();
       return;
@@ -221,13 +232,20 @@ export class AudioBus {
     }
     this.stemsReady = true;
     this.usingStems = true;
+    this.stopLoop();
     this.applyStemMix(true);
     this.publishTest();
   }
 
   private bootStemsHtmlOnly(): void {
+    if (this.stemsReady && this.usingStems) {
+      this.stopLoop();
+      this.applyStemMix(true);
+      return;
+    }
     this.stemsReady = true;
     this.usingStems = true;
+    this.stopLoop();
     this.applyStemMix(true);
     this.publishTest();
   }
@@ -478,7 +496,8 @@ export class AudioBus {
       this.stopLoop();
       this.pauseStems();
     } else {
-      this.startLoop();
+      if (this.usingStems) this.stopLoop();
+      else this.startLoop();
       if (this.unlocked) this.resumeStems();
     }
     if (this.unlocked) this.applyStemMix(false);
@@ -571,6 +590,7 @@ export class AudioBus {
   scream(): void {
     if (!this.ctx || !this.sfx || this.muted || this.pageHidden) return;
     this.duckStems(0.5, 0.035, 0.12, 0.25);
+    if (!this.takeSfx()) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const osc2 = this.ctx.createOscillator();
@@ -591,6 +611,12 @@ export class AudioBus {
     osc2.start(t);
     osc.stop(t + 1.3);
     osc2.stop(t + 1.3);
+    osc.onended = () => {
+      osc.disconnect();
+      osc2.disconnect();
+      g.disconnect();
+      this.freeSfx();
+    };
   }
 
   splat(): void {
@@ -658,6 +684,7 @@ export class AudioBus {
   private yell(kind: YellKind, gain: number): void {
     if (!this.ctx || !this.sfx || this.muted || this.pageHidden) return;
     this.duckStems(0.5, 0.035, 0.1, 0.22);
+    if (!this.takeSfx()) return;
     const now = this.ctx.currentTime;
     const p = YELLS[kind];
     const osc = this.ctx.createOscillator();
@@ -684,6 +711,13 @@ export class AudioBus {
     g.connect(this.sfx);
     osc.start(now);
     osc.stop(now + p.dur + 0.02);
+    osc.onended = () => {
+      osc.disconnect();
+      bp1.disconnect();
+      bp2.disconnect();
+      g.disconnect();
+      this.freeSfx();
+    };
   }
 
   private silenceVoice(): void {
@@ -710,7 +744,18 @@ export class AudioBus {
     g.linearRampToValueAtTime(this.musicBase, now + attack + hold + release);
   }
 
+  private takeSfx(): boolean {
+    if (this.sfxVoices >= this.sfxCap) return false;
+    this.sfxVoices += 1;
+    return true;
+  }
+
+  private freeSfx(): void {
+    this.sfxVoices = Math.max(0, this.sfxVoices - 1);
+  }
+
   private startLoop(): void {
+    if (this.usingStems) return;
     if (this.loopRaf) return;
     const pulse = () => {
       this.scheduleAhead();
@@ -818,6 +863,8 @@ export class AudioBus {
     endFreq?: number,
   ): void {
     if (!this.ctx || this.muted || this.pageHidden) return;
+    const isSfx = dest === this.sfx;
+    if (isSfx && !this.takeSfx()) return;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.type = type;
@@ -833,11 +880,14 @@ export class AudioBus {
     osc.onended = () => {
       osc.disconnect();
       g.disconnect();
+      if (isSfx) this.freeSfx();
     };
   }
 
   private noiseAt(dur: number, gain: number, freq: number, when: number, dest: GainNode): void {
     if (!this.ctx || this.muted || this.pageHidden) return;
+    const isSfx = dest === this.sfx;
+    if (isSfx && !this.takeSfx()) return;
     const n = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
     const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
     const data = buf.getChannelData(0);
@@ -855,6 +905,12 @@ export class AudioBus {
     g.connect(dest);
     src.start(when);
     src.stop(when + dur + 0.02);
+    src.onended = () => {
+      src.disconnect();
+      filter.disconnect();
+      g.disconnect();
+      if (isSfx) this.freeSfx();
+    };
   }
 }
 
