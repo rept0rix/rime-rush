@@ -30,6 +30,7 @@ export class AudioBus {
   private nextNote = 0;
   private step = 0;
   private loopRaf = 0;
+  private loopOn = false;
   private htmlJump: HTMLAudioElement | null = null;
   private htmlPing: HTMLAudioElement | null = null;
   private lang: "he" | "en" = "en";
@@ -328,11 +329,13 @@ export class AudioBus {
 
   private pauseStems(): void {
     for (const s of Object.values(this.stems)) {
+      if (!s?.el) continue;
       try {
-        s?.el.pause();
+        s.el.pause();
       } catch {
         /* ignore */
       }
+      s.el.muted = true;
     }
   }
 
@@ -564,13 +567,28 @@ export class AudioBus {
     this.blip(740, 0.16, "triangle", 0.06, 0.1);
   }
 
-  /** Stop climb mix on YOU FELL. Optional short sting; mute still wins. */
-  death(): void {
+  /** Cut all beds without sting — leave room / engine.stop. */
+  cut(): void {
     this.heat = 0;
-    this.pauseStems();
     this.stopLoop();
+    this.pauseStems();
     this.silenceVoice();
+    try {
+      this.htmlJump?.pause();
+    } catch {
+      /* ignore */
+    }
+    try {
+      this.htmlPing?.pause();
+    } catch {
+      /* ignore */
+    }
     this.setScene("off");
+  }
+
+  /** Stop climb mix on local death. Optional short sting; mute still wins. */
+  death(): void {
+    this.cut();
     if (this.muted || this.pageHidden) return;
     this.blip(392, 0.1, "sine", 0.12);
     this.blip(294, 0.11, "sine", 0.1, 0.12);
@@ -771,9 +789,13 @@ export class AudioBus {
   }
 
   private startLoop(): void {
-    if (this.usingStems) return;
-    if (this.loopRaf) return;
+    if (this.usingStems || this.muted || this.scene === "off" || this.loopOn) return;
+    this.loopOn = true;
     const pulse = () => {
+      if (!this.loopOn || this.usingStems || this.scene === "off" || this.muted) {
+        this.loopRaf = 0;
+        return;
+      }
       this.scheduleAhead();
       this.loopRaf = requestAnimationFrame(pulse);
     };
@@ -781,6 +803,7 @@ export class AudioBus {
   }
 
   private stopLoop(): void {
+    this.loopOn = false;
     if (this.loopRaf) cancelAnimationFrame(this.loopRaf);
     this.loopRaf = 0;
   }
