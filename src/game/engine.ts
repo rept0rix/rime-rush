@@ -175,6 +175,7 @@ export class RimeEngine {
 	worldFreezeT = 0;
 	shots: Shot[] = [];
 	screamOn = false;
+	deathStung = false;
 	continueT = 0;
 	waitingContinue = false;
 	creeps: Creep[] = [];
@@ -404,6 +405,7 @@ export class RimeEngine {
 		this.particles = [];
 		this.shots = [];
 		this.screamOn = false;
+		this.deathStung = false;
 		this.continueT = 0;
 		this.waitingContinue = false;
 		this.audio.setScene("game");
@@ -526,6 +528,7 @@ export class RimeEngine {
 		this.world.scrollSpeed = 0;
 		this.hurryOn = false;
 		this.screamOn = false;
+		this.deathStung = false;
 		this.continueT = 0;
 		this.waitingContinue = false;
 		this.creeps = [];
@@ -738,6 +741,10 @@ export class RimeEngine {
 			return;
 		}
 		if (this.mode === "laststand" || this.mode === "bots") return;
+		if (!this.local()?.alive) {
+			this.hurryOn = false;
+			return;
+		}
 		const floor = this.local()?.floor ?? 0;
 		if (!this.hurryOn && floor >= F.SCROLL_START_FLOOR) {
 			this.hurryOn = true;
@@ -896,10 +903,7 @@ export class RimeEngine {
 		const line = this.mode === "laststand" ? Math.max(this.killY, this.cam.y) : this.cam.y;
 		for (const p of this.players) {
 			if (!p.alive) continue;
-			if (line - p.y > 28 && p.id === this.localId && !this.screamOn) {
-				this.screamOn = true;
-				this.audio.scream();
-			}
+			if (line - p.y > 28 && p.id === this.localId) this.screamOn = true;
 			if (p.y < line - 210) this.kill(p);
 		}
 	}
@@ -909,7 +913,11 @@ export class RimeEngine {
 		p.deadAt = this.time;
 		p.spin = Math.PI;
 		if (p.id === this.localId) {
-			this.audio.scream();
+			this.hurryOn = false;
+			if (!this.deathStung) {
+				this.audio.death();
+				this.deathStung = true;
+			}
 			this.screamOn = true;
 			this.pitY = this.cam.y - 140;
 			this.pitHit = false;
@@ -969,6 +977,7 @@ export class RimeEngine {
 		this.pitY = null;
 		this.pitHit = false;
 		this.screamOn = false;
+		this.deathStung = false;
 		p.combo = 0;
 		this.waitingContinue = false;
 		this.continueT = 0;
@@ -1011,7 +1020,12 @@ export class RimeEngine {
 	finish(id: any, name: any) {
 		if (this.over) return;
 		this.over = true;
+		this.hurryOn = false;
 		const local = this.local();
+		if (local && !local.alive && !this.deathStung) {
+			this.audio.death();
+			this.deathStung = true;
+		}
 		if (this.mode !== "solo" && this.mode !== "train" && id === this.localId) this.audio.win();
 		const ranks = [...this.players].sort((a, b) => b.score - a.score || b.floor - a.floor).map((p) => ({
 			id: p.id,

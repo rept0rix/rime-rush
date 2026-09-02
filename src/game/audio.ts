@@ -559,8 +559,22 @@ export class AudioBus {
   }
 
   hurry(): void {
+    if (this.scene === "off" || this.muted) return;
     this.blip(620, 0.12, "sine", 0.08);
     this.blip(740, 0.16, "triangle", 0.06, 0.1);
+  }
+
+  /** Stop climb mix on YOU FELL. Optional short sting; mute still wins. */
+  death(): void {
+    this.heat = 0;
+    this.pauseStems();
+    this.stopLoop();
+    this.silenceVoice();
+    this.setScene("off");
+    if (this.muted || this.pageHidden) return;
+    this.blip(392, 0.1, "sine", 0.12);
+    this.blip(294, 0.11, "sine", 0.1, 0.12);
+    this.blip(196, 0.16, "triangle", 0.08, 0.24);
   }
 
   comboBreak(): void {

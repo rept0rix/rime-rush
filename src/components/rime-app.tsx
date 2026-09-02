@@ -133,6 +133,7 @@ function Results() {
   }, [replay]);
 
   const goHome = () => {
+    audioBus.setScene("off");
     setResult(null);
     setScreen("menu");
     useGame.getState().setRoom("");
