@@ -696,79 +696,19 @@ export class AudioBus {
     this.scheduleAhead();
   }
 
-  kid(line: KidLine): void {
-    if (this.muted || this.pageHidden) return;
-    const now = performance.now();
-    if (now - this.lastTalk < 90) return;
-    this.lastTalk = now;
-    const word = KID_WORDS[this.lang][line];
-    this.yell(YELL_FOR[line], line === "combo" ? 0.28 : line === "pill" || line === "power" ? 0.22 : 0.18);
-    if (now - this.lastVoice < 280) return;
-    this.lastVoice = now;
-    this.shout(word);
+  kid(_line: KidLine): void {
+    /* action voice TTS/yells disabled */
+    return;
   }
 
-  private shout(word: string): void {
-    if (this.muted || this.pageHidden) return;
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) return;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(word);
-      u.lang = this.lang === "he" ? "he-IL" : "en-US";
-      u.rate = word.length > 10 ? 1.1 : 1.28;
-      u.pitch = 1.45;
-      u.volume = 1;
-      const voices = synth.getVoices();
-      const prefer = this.lang === "he" ? /he/i : /en/i;
-      const kid =
-        voices.find((v) => prefer.test(v.lang) && /child|kid|samantha|google|female|zira|heami/i.test(v.name)) ??
-        voices.find((v) => prefer.test(v.lang)) ??
-        voices.find((v) => /^en/i.test(v.lang));
-      if (kid) u.voice = kid;
-      synth.speak(u);
-    } catch {
-      /* no speech */
-    }
+  private shout(_word: string): void {
+    /* speechSynthesis action words disabled */
+    return;
   }
 
-  private yell(kind: YellKind, gain: number): void {
-    if (!this.ctx || !this.sfx || this.muted || this.pageHidden) return;
-    this.duckStems(0.5, 0.035, 0.1, 0.22);
-    if (!this.takeSfx()) return;
-    const now = this.ctx.currentTime;
-    const p = YELLS[kind];
-    const osc = this.ctx.createOscillator();
-    osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(p.p0, now);
-    osc.frequency.exponentialRampToValueAtTime(Math.max(40, p.p1), now + p.dur);
-    const bp1 = this.ctx.createBiquadFilter();
-    bp1.type = "bandpass";
-    bp1.frequency.setValueAtTime(p.f1, now);
-    bp1.Q.value = 6;
-    const bp2 = this.ctx.createBiquadFilter();
-    bp2.type = "bandpass";
-    bp2.frequency.setValueAtTime(p.f2, now);
-    bp2.frequency.exponentialRampToValueAtTime(Math.max(200, p.f2 * 0.7), now + p.dur);
-    bp2.Q.value = 5;
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(gain, now + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + p.dur);
-    osc.connect(bp1);
-    osc.connect(bp2);
-    bp1.connect(g);
-    bp2.connect(g);
-    g.connect(this.sfx);
-    osc.start(now);
-    osc.stop(now + p.dur + 0.02);
-    osc.onended = () => {
-      osc.disconnect();
-      bp1.disconnect();
-      bp2.disconnect();
-      g.disconnect();
-      this.freeSfx();
-    };
+  private yell(_kind: YellKind, _gain: number): void {
+    /* synthetic yell oscillators disabled */
+    return;
   }
 
   private silenceVoice(): void {
