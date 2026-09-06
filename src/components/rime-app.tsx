@@ -8,11 +8,13 @@ import { HubHome } from "@/components/hub-home";
 import { HubProfile } from "@/components/hub-profile";
 import { InstallSheet } from "@/components/install-sheet";
 import { LobbyView } from "@/components/lobby-view";
+import { MatchEnd } from "@/components/match-end";
 import { MuteButton } from "@/components/mute-button";
 import { NoteInbox } from "@/components/note-inbox";
 import { audioBus } from "@/game/audio";
 import { dir, t } from "@/game/i18n";
 import { useGame } from "@/game/store";
+import type { GameResult } from "@/game/types";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export function RimeApp() {
@@ -71,7 +73,10 @@ export function RimeApp() {
         {screen === "play" && <PlayGate />}
         {screen === "lobby" && <LobbyView />}
         {screen === "menu" && <Hub />}
-        {result && screen !== "lobby" && <Results />}
+        {result && screen !== "lobby" && (result.mode === "solo" || result.mode === "train") && <Results />}
+        {result && screen !== "lobby" && (result.mode === "bots" || result.mode === "laststand" || result.mode === "race") && (
+          <MatchEndGate result={result} />
+        )}
       </PhoneStage>
       <NoteInbox />
       <InstallSheet />
@@ -97,6 +102,30 @@ function Hub() {
       {hub === "board" && <HubBoard />}
       {hub === "me" && <HubProfile />}
     </div>
+  );
+}
+
+
+function MatchEndGate({ result }: { result: GameResult }) {
+  const setScreen = useGame((s) => s.setScreen);
+  const setResult = useGame((s) => s.setResult);
+  const replay = useGame((s) => s.replay);
+
+  const onHome = () => {
+    audioBus.setScene("off");
+    setResult(null);
+    setScreen("menu");
+    useGame.getState().setRoom("");
+    useGame.getState().setMode("solo");
+  };
+
+  return (
+    <MatchEnd
+      result={result}
+      onHome={onHome}
+      onRoom={() => replay()}
+      roomLabel={result.mode === "bots" ? "Play again" : "Room"}
+    />
   );
 }
 

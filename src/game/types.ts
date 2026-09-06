@@ -160,7 +160,8 @@ export interface GameResult {
   combo: number;
   winnerId: string | null;
   winnerName: string;
-  ranks: { id: string; name: string; floor: number; score: number; alive: boolean }[];
+  explain?: string;
+  ranks: { id: string; name: string; floor: number; score: number; alive: boolean; survived: number }[];
 }
 
 export interface LobbyPlayer {

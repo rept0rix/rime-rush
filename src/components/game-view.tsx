@@ -211,9 +211,37 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
         </div>
       )}
 
-      {hud && !hud.alive && (mode === "bots" || mode === "laststand") && !hud.paused && !hud.downed && (
-        <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex justify-center">
-          <p className="rounded-full bg-bg/50 px-3 py-1 text-xs text-muted">Watching…</p>
+      {hud?.spectate && !hud.paused && !hud.downed && (
+        <div className="pointer-events-none absolute inset-0 z-20 bg-black/45 backdrop-blur-[2px]">
+          <div className="absolute inset-x-0 top-16 flex justify-center px-4">
+            <div className="w-full max-w-[300px] rounded-2xl border border-[#5a3a20]/80 bg-[#1a100c]/85 px-4 py-3">
+              <p className="text-center font-display text-lg text-ice">
+                {hud.spectate.leader ? `FOLLOWING ${hud.spectate.leader}` : "SPECTATING"}
+              </p>
+              <ul className="mt-2 space-y-1">
+                {hud.spectate.rows.map((row) => {
+                  const m = Math.floor(row.survived / 60);
+                  const s = Math.max(0, Math.round(row.survived % 60));
+                  return (
+                    <li
+                      key={row.id}
+                      className={`flex items-center justify-between text-xs ${
+                        row.you ? "font-bold text-gold" : row.alive ? "text-fg" : "text-muted"
+                      }`}
+                    >
+                      <span className="truncate">
+                        {row.name}
+                        {row.you ? " (YOU)" : ""}
+                      </span>
+                      <span className="ml-2 shrink-0 tabular-nums">
+                        {row.score} · {m}m {s}s
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 

@@ -98,6 +98,10 @@ export interface HudSnap {
   comboYell: string;
   lastGain: number;
   story: string | null;
+  spectate: null | {
+    leader: string;
+    rows: { id: string; name: string; score: number; survived: number; alive: boolean; you: boolean }[];
+  };
 }
 
 export interface Boot {
@@ -1039,8 +1043,10 @@ export class RimeEngine {
 			name: p.name,
 			floor: p.floor,
 			score: p.score,
-			alive: p.alive
+			alive: p.alive,
+			survived: Math.round(p.alive ? this.time : (p.deadAt > 0 ? p.deadAt : this.time))
 		}));
+		const explain = name ? `Match over — ${name} wins.` : "Match over.";
 		this.hooks.onOver({
 			mode: this.mode,
 			floor: local?.floor ?? 0,
@@ -1048,6 +1054,7 @@ export class RimeEngine {
 			combo: local?.bestCombo ?? 0,
 			winnerId: id,
 			winnerName: name,
+			explain,
 			ranks
 		});
 	}
@@ -1391,6 +1398,20 @@ export class RimeEngine {
 		const showCoach = !!p && p.alive && p.combo < 2 && this.time < this.coachUntil && this.time > 0.2;
 		const dist = p ? p.y - this.cam.y : 200;
 		const r = p ? speedRatio(p.vx) : 0;
+		let spectate: HudSnap["spectate"] = null;
+		if (p && !p.alive && !this.over && (this.mode === "laststand" || this.mode === "race" || this.mode === "bots")) {
+			const rows = [...this.players].sort((a, b) => b.score - a.score || b.floor - a.floor).map((o) => ({
+				id: o.id,
+				name: o.name,
+				score: o.score,
+				survived: Math.round(o.alive ? this.time : (o.deadAt > 0 ? o.deadAt : this.time)),
+				alive: o.alive,
+				you: o.id === this.localId
+			}));
+			const highestAlive = [...this.players].filter((o) => o.alive).sort((a, b) => b.floor - a.floor || b.y - a.y)[0];
+			const leader = highestAlive?.name ?? rows[0]?.name ?? "";
+			spectate = { leader, rows };
+		}
 		this.hooks.onHud({
 			floor: p?.floor ?? 0,
 			combo: p?.combo ?? 0,
@@ -1426,6 +1447,7 @@ export class RimeEngine {
 			comboYell: p && p.combo >= 2 ? this.comboYell || comboYellOf(p.combo) : "",
 			lastGain: this.lastGain,
 			story: this.attract ? null : this.storyLine,
+			spectate,
 			debug: this.debugOn && p ? `vx ${p.vx.toFixed(0)}  vy ${p.vy.toFixed(0)}  ${bandOf(p.vx)}  jump ${jumpImpulse(p.vx).toFixed(0)}  r ${r.toFixed(2)}  scroll ${this.world.scrollSpeed.toFixed(0)}  comboT ${p.comboT.toFixed(1)}` : ""
 		});
 	}

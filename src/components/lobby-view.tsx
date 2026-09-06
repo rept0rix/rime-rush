@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { GameView } from "@/components/game-view";
+import { MatchEnd } from "@/components/match-end";
 import { StatusDot } from "@/components/status-dot";
+import { audioBus } from "@/game/audio";
 import { makeRoomCode, roomId } from "@/game/room";
 import { botName } from "@/game/bots";
 import { SKINS } from "@/game/sprites";
@@ -59,6 +61,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
   const setFillBots = useGame((s) => s.setFillBots);
   const mpMode = useGame((s) => s.mpMode);
   const setMpMode = useGame((s) => s.setMpMode);
+  const result = useGame((s) => s.result);
   const [started, setStarted] = useState<null | { seed: number; mode: Mode; bots: BotSeed[] }>(null);
   const [copied, setCopied] = useState("");
   const [online, setOnline] = useState<PresenceRow[]>([]);
@@ -105,6 +108,25 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
   useEffect(() => {
     if (host) publishLobby(p2p, save.color, name, mpMode, fillBots, p2p.selfId);
   }, [p2p.send, p2p.selfId, p2p.peers, host, fillBots, mpMode, name, save.color]);
+
+  if (result && started) {
+    return (
+      <div className="relative h-full w-full bg-bg">
+        <MatchEnd
+          result={result}
+          onHome={() => {
+            audioBus.setScene("off");
+            useGame.getState().setResult(null);
+            leaveToMenu();
+          }}
+          onRoom={() => {
+            useGame.getState().setResult(null);
+            setStarted(null);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (started) {
     return (
