@@ -603,13 +603,76 @@ export class AudioBus {
     this.setScene("off");
   }
 
-  /** Stop climb mix on local death. Optional short sting; mute still wins. */
+  /** Stop climb mix on local death. Louder fall whoosh; mute still wins. */
   death(): void {
     this.cut();
     if (this.muted || this.pageHidden) return;
-    this.blip(392, 0.1, "sine", 0.12);
-    this.blip(294, 0.11, "sine", 0.1, 0.12);
-    this.blip(196, 0.16, "triangle", 0.08, 0.24);
+    this.playDeathSting();
+  }
+
+  /** Descending "aww/fell" whoosh (~0.65s): pitch fall + noise, louder than tiny blips. */
+  private playDeathSting(): void {
+    if (!this.ctx || !this.sfx || this.muted || this.pageHidden) return;
+    if (!this.takeSfx()) return;
+    const t = this.ctx.currentTime;
+    const dur = 0.65;
+
+    const osc = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = "sine";
+    osc2.type = "triangle";
+    osc.frequency.setValueAtTime(600, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + dur);
+    osc2.frequency.setValueAtTime(280, t);
+    osc2.frequency.exponentialRampToValueAtTime(55, t + dur * 1.05);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.26, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.18, t + 0.22);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    const n = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
+    const buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.Q.value = 0.9;
+    filter.frequency.setValueAtTime(2400, t);
+    filter.frequency.exponentialRampToValueAtTime(280, t + dur);
+    const ng = this.ctx.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(0.24, t + 0.05);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    osc.connect(g);
+    osc2.connect(g);
+    g.connect(this.sfx);
+    src.connect(filter);
+    filter.connect(ng);
+    ng.connect(this.sfx);
+
+    osc.start(t);
+    osc2.start(t);
+    src.start(t);
+    osc.stop(t + dur + 0.05);
+    osc2.stop(t + dur + 0.05);
+    src.stop(t + dur + 0.05);
+    osc.onended = () => {
+      try {
+        osc.disconnect();
+        osc2.disconnect();
+        g.disconnect();
+        src.disconnect();
+        filter.disconnect();
+        ng.disconnect();
+      } catch {
+        /* ignore */
+      }
+      this.freeSfx();
+    };
   }
 
   comboBreak(): void {
