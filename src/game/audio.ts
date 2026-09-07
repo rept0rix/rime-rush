@@ -33,6 +33,11 @@ export class AudioBus {
   private loopOn = false;
   private htmlJump: HTMLAudioElement | null = null;
   private htmlPing: HTMLAudioElement | null = null;
+  private htmlKenneyJump: HTMLAudioElement | null = null;
+  private htmlKenneyDoubleJump: HTMLAudioElement | null = null;
+  private htmlKenneySuperJump: HTMLAudioElement | null = null;
+  private htmlKenneyLand: HTMLAudioElement | null = null;
+  private htmlKenneyDeath: HTMLAudioElement | null = null;
   private lang: "he" | "en" = "en";
   private heat = 0;
   private lastTalk = 0;
@@ -136,6 +141,7 @@ export class AudioBus {
     } catch {
       /* ignore */
     }
+    this.pauseKenneySfx();
     for (const s of Object.values(this.stems)) {
       if (!s?.el) continue;
       try {
@@ -220,6 +226,68 @@ export class AudioBus {
       this.playHtml(this.htmlJump, 0.0001);
     }
     if (!this.htmlPing) this.htmlPing = this.makeHtml(PING_WAV, 0.9);
+    if (!this.htmlKenneyJump) {
+      this.htmlKenneyJump = this.makeHtml(KENNEY_JUMP, 0.7);
+      this.playHtml(this.htmlKenneyJump, 0.0001);
+    }
+    if (!this.htmlKenneyDoubleJump) {
+      this.htmlKenneyDoubleJump = this.makeHtml(KENNEY_DOUBLE_JUMP, 0.72);
+      this.playHtml(this.htmlKenneyDoubleJump, 0.0001);
+    }
+    if (!this.htmlKenneySuperJump) {
+      this.htmlKenneySuperJump = this.makeHtml(KENNEY_SUPER_JUMP, 0.75);
+      this.playHtml(this.htmlKenneySuperJump, 0.0001);
+    }
+    if (!this.htmlKenneyLand) {
+      this.htmlKenneyLand = this.makeHtml(KENNEY_LAND, 0.65);
+      this.playHtml(this.htmlKenneyLand, 0.0001);
+    }
+    if (!this.htmlKenneyDeath) {
+      this.htmlKenneyDeath = this.makeHtml(KENNEY_DEATH, 0.85);
+      this.playHtml(this.htmlKenneyDeath, 0.0001);
+    }
+  }
+
+  private kenneyOnes(): HTMLAudioElement[] {
+    return [
+      this.htmlKenneyJump,
+      this.htmlKenneyDoubleJump,
+      this.htmlKenneySuperJump,
+      this.htmlKenneyLand,
+      this.htmlKenneyDeath,
+    ].filter((a): a is HTMLAudioElement => !!a);
+  }
+
+  private pauseKenneySfx(): void {
+    for (const a of this.kenneyOnes()) {
+      try {
+        a.pause();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  /** One-shot Kenney clip: pause, rewind, play. Respects mute + pageHidden. */
+  private playKenney(a: HTMLAudioElement | null, vol: number): boolean {
+    if (!a || this.muted || this.pageHidden) return false;
+    try {
+      a.pause();
+      a.currentTime = 0;
+      a.volume = vol;
+      a.muted = false;
+      const p = a.play();
+      if (p) {
+        void p.catch(() => {});
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private kenneyReady(a: HTMLAudioElement | null): boolean {
+    return !!a && a.readyState >= 2 && !a.error;
   }
 
   private bootStems(): void {
@@ -462,6 +530,15 @@ export class AudioBus {
           /* ignore */
         }
       }
+      for (const a of this.kenneyOnes()) {
+        a.muted = true;
+        a.volume = 0;
+        try {
+          a.pause();
+        } catch {
+          /* ignore */
+        }
+      }
       for (const s of Object.values(this.stems)) {
         if (!s) continue;
         s.el.muted = true;
@@ -477,6 +554,7 @@ export class AudioBus {
     }
     if (this.htmlJump) this.htmlJump.muted = false;
     if (this.htmlPing) this.htmlPing.muted = false;
+    for (const a of this.kenneyOnes()) a.muted = false;
     if (this.pageHidden) return;
     this.applyMute();
     if (this.unlocked) {
@@ -525,17 +603,28 @@ export class AudioBus {
     }
   }
 
+  /**
+   * Kenney jump one-shot. API only exposes combo:
+   * combo >= 5 → super-jump.ogg; combo >= 2 → double-jump.ogg; else jump.ogg.
+   * Ogg is primary (no synth blip); duckStems kept.
+   */
   jump(combo: number): void {
-    const n = Math.min(40, combo);
-    const start = 180 + n * 8;
-    const peak = 420 + n * 16;
     this.duckStems(0.35);
-    this.slide(start, peak, 0.1, "sine", 0.16);
-    this.slide(peak * 0.5, start * 0.6, 0.18, "triangle", 0.07);
+    const n = Math.min(40, combo);
+    let clip = this.htmlKenneyJump;
+    let vol = 0.7;
+    if (n >= 5) {
+      clip = this.htmlKenneySuperJump;
+      vol = 0.78;
+    } else if (n >= 2) {
+      clip = this.htmlKenneyDoubleJump;
+      vol = 0.74;
+    }
+    this.playKenney(clip, vol);
   }
 
   land(): void {
-    this.slide(120, 48, 0.1, "sine", 0.1);
+    this.playKenney(this.htmlKenneyLand, 0.65);
   }
 
   wall(): void {
@@ -600,13 +689,32 @@ export class AudioBus {
     } catch {
       /* ignore */
     }
+    this.pauseKenneySfx();
     this.setScene("off");
   }
 
-  /** Stop climb mix on local death. Louder fall whoosh; mute still wins. */
+  /** Stop climb mix on local death. Kenney death-whoosh; synth fallback. Mute skips. */
   death(): void {
     this.cut();
     if (this.muted || this.pageHidden) return;
+    const a = this.htmlKenneyDeath;
+    if (this.kenneyReady(a)) {
+      try {
+        a!.pause();
+        a!.currentTime = 0;
+        a!.volume = 0.85;
+        a!.muted = false;
+        const p = a!.play();
+        if (p) {
+          void p.catch(() => this.playDeathSting());
+          return;
+        }
+        return;
+      } catch {
+        this.playDeathSting();
+        return;
+      }
+    }
     this.playDeathSting();
   }
 
@@ -1064,3 +1172,10 @@ function makeBeepWav(freq: number, ms: number): string {
 
 const JUMP_WAV = makeBeepWav(240, 180);
 const PING_WAV = makeBeepWav(620, 160);
+
+/** Kenney CC0 one-shots under public/sfx/ */
+const KENNEY_JUMP = "/sfx/jump.ogg";
+const KENNEY_DOUBLE_JUMP = "/sfx/double-jump.ogg";
+const KENNEY_SUPER_JUMP = "/sfx/super-jump.ogg";
+const KENNEY_LAND = "/sfx/land.ogg";
+const KENNEY_DEATH = "/sfx/death-whoosh.ogg";
