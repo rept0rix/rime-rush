@@ -43,7 +43,7 @@ export const Route = createRootRoute({
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="h-dvh min-h-dvh max-h-dvh overflow-hidden">
         <PreviewHostBridge />
         <AuthProvider>
           <Outlet />
