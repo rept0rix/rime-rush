@@ -14,7 +14,7 @@ import { makeRoomCode } from "@/game/room";
 import { SKIN_PRICE, WEAPON_SHOP } from "@/game/shop";
 import { SKINS } from "@/game/sprites";
 import { useGame } from "@/game/store";
-import type { Lang, PresenceStatus, WeaponId } from "@/game/types";
+import type { PresenceStatus, WeaponId } from "@/game/types";
 import { requestAlerts } from "@/lib/alerts";
 import { clientId } from "@/lib/client-id";
 import { inviteFriend, listFriends, purgeMyAccount, removeFriend, type FriendRow } from "@/lib/rime-data";
@@ -167,29 +167,7 @@ export function HubProfile() {
             applyShake(on);
           }}
         />
-        <div className="mt-4">
-          <p className="mb-2 text-center text-[11px] font-bold tracking-wide text-muted uppercase">
-            {copy.lang}
-          </p>
-          <div className="grid grid-cols-2 gap-2" data-testid="lang-toggle">
-            {(["he", "en"] as Lang[]).map((code) => {
-              const on = lang === code;
-              return (
-                <button
-                  key={code}
-                  type="button"
-                  data-testid={`lang-${code}`}
-                  onClick={() => patchSave({ lang: code })}
-                  className={`h-12 rounded-xl border-2 font-display text-2xl tracking-wide active:scale-95 ${
-                    on ? "border-ice bg-ice/15 text-ice" : "border-line bg-bg text-muted"
-                  }`}
-                >
-                  {code === "he" ? "עב" : "EN"}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Language toggle hidden — English-only UI */}
         <div className="mt-4 grid grid-cols-2 gap-3">
           <PlaqueBtn
             src={save.alerts ? "/ui/set-alerts-on.jpg" : "/ui/set-alerts-off.jpg"}

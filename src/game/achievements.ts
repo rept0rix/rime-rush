@@ -22,12 +22,12 @@ export const BADGES: Badge[] = [
   { id: "score5k", nameEn: "High roller", nameHe: "ניקוד גדול", hintEn: "Score 5,000.", hintHe: "הגע ל־5,000 נקודות." },
 ];
 
-export function badgeName(b: Badge, lang: Lang): string {
-  return lang === "he" ? b.nameHe : b.nameEn;
+export function badgeName(b: Badge, _lang: Lang): string {
+  return b.nameEn; // English-only UI
 }
 
-export function badgeHint(b: Badge, lang: Lang): string {
-  return lang === "he" ? b.hintHe : b.hintEn;
+export function badgeHint(b: Badge, _lang: Lang): string {
+  return b.hintEn; // English-only UI
 }
 
 export function unlockBadges(save: SaveData): string[] {

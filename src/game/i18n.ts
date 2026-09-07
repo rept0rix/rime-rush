@@ -252,12 +252,15 @@ const dict = { he, en };
 
 export type Copy = typeof en;
 
-export function t(lang: Lang): Copy {
-  return dict[lang];
+/** English-only UI: ignore lang and always serve EN copy. */
+export function t(_lang: Lang): Copy {
+  void dict; // retain `he` dictionary without serving it
+  return en;
 }
 
-export function dir(lang: Lang): "rtl" | "ltr" {
-  return lang === "he" ? "rtl" : "ltr";
+/** English-only UI: always LTR. */
+export function dir(_lang: Lang): "rtl" | "ltr" {
+  return "ltr";
 }
 
 export const POWER_NAME: Record<Lang, Record<PowerId, string>> = {
@@ -334,3 +337,9 @@ export const MODE_LABEL: Record<Lang, Record<Mode, string>> = {
     race: "Race",
   },
 };
+
+// FORCE_EN_POWER_LOOKUPS — keep he dictionaries above; serve EN at runtime.
+POWER_NAME.he = POWER_NAME.en;
+POWER_DESC.he = POWER_DESC.en;
+MODE_LABEL.he = MODE_LABEL.en;
+

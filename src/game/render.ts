@@ -1,7 +1,6 @@
 import {
   BASE_W,
   COMBO_TITLES_EN,
-  COMBO_TITLES_HE,
   DRAW_H,
   DRAW_W,
   PLAYER_COLORS,
@@ -24,8 +23,8 @@ export function worldToScreen(y: number, cam: Cam, viewH: number): number {
   return viewH - (y - cam.y);
 }
 
-export function comboTitle(n: number, lang: Lang): string {
-  const list = lang === "he" ? COMBO_TITLES_HE : COMBO_TITLES_EN;
+export function comboTitle(n: number, _lang: Lang): string {
+  const list = COMBO_TITLES_EN; // English-only UI
   let label = list[0]?.label ?? "HOP!";
   for (const row of list) if (n >= row.at) label = row.label;
   return label;
@@ -512,7 +511,7 @@ function drawPickups(ctx: CanvasRenderingContext2D, world: World, cam: Cam, view
       continue;
     }
     const power = POWER_BY_ID[pk.power];
-    const label = POWER_NAME[lang][pk.power];
+    const label = POWER_NAME.en[pk.power];
     ctx.fillStyle = "rgba(10,8,4,0.45)";
     ctx.beginPath();
     ctx.ellipse(0, 10, 10, 4, 0, 0, Math.PI * 2);

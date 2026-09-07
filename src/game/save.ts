@@ -9,21 +9,12 @@ function cleanStatus(v: unknown): PresenceStatus {
   return v === "offline" || v === "waiting" ? v : "online";
 }
 
-function cleanLang(v: unknown): Lang | null {
-  return v === "he" || v === "en" ? v : null;
+function cleanLang(_v: unknown): Lang {
+  return "en";
 }
 
-/** Prefer Hebrew when browser/navigator is he / he-IL. */
+/** English-only UI: always EN regardless of navigator. */
 export function detectLang(): Lang {
-  try {
-    const nav =
-      typeof navigator !== "undefined"
-        ? navigator.language || (navigator.languages && navigator.languages[0]) || ""
-        : "";
-    if (/^he\b/i.test(nav)) return "he";
-  } catch {
-    /* ignore */
-  }
   return "en";
 }
 
@@ -55,8 +46,8 @@ function baseDefaults(): SaveData {
 
 function migrate(raw: SaveData): SaveData {
   const prevVersion = typeof raw.version === "number" ? raw.version : 0;
-  // Before v8 lang was forced to "en". On unlock, pick navigator once; after that keep saved choice.
-  const lang = prevVersion >= 8 ? (cleanLang(raw.lang) ?? detectLang()) : detectLang();
+  // English-only UI: always coerce saved lang to "en".
+  const lang = cleanLang(raw.lang);
   const merged: SaveData = {
     ...baseDefaults(),
     ...raw,
@@ -96,8 +87,9 @@ export function loadSave(): SaveData {
     const raw = JSON.parse(txt) as SaveData;
     const prevVersion = typeof raw.version === "number" ? raw.version : 0;
     const merged = migrate(raw);
-    // Persist unlock (navigator default / version bump) so it sticks once.
-    if (prevVersion < SAVE_VERSION) writeSave(merged);
+    merged.lang = "en";
+    // Persist unlock (version bump) or lang coerce so EN sticks.
+    if (prevVersion < SAVE_VERSION || raw.lang !== "en") writeSave(merged);
     return merged;
   } catch {
     return baseDefaults();

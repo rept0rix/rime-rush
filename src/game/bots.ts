@@ -5,8 +5,8 @@ import { INNER_L, INNER_R } from "./constants";
 
 const BOT_NAMES = ["Ash", "Cinder", "Blaze", "Ember", "אפר", "גחל", "להבה", "אמבר"];
 
-export function botName(i: number, lang: "he" | "en"): string {
-  return lang === "he" ? BOT_NAMES[4 + (i % 4)]! : BOT_NAMES[i % 4]!;
+export function botName(i: number, _lang: "he" | "en"): string {
+  return BOT_NAMES[i % 4]!; // English-only UI
 }
 
 export function thinkBot(p: Player, world: World, rivals: Player[]): Actions {

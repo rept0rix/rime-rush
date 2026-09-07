@@ -5,7 +5,8 @@ export const FACTION_THEM = "EMBER";
 
 export const RAID_NAMES: Record<Lang, string[]> = {
   en: ["Ash", "Cinder", "Blaze"],
-  he: ["אפר", "גחל", "להבה"],
+  // English-only UI: he key still present but serves EN names.
+  he: ["Ash", "Cinder", "Blaze"],
 };
 
 const BEATS: { at: number; en: string; he: string }[] = [
@@ -21,10 +22,10 @@ const BEATS: { at: number; en: string; he: string }[] = [
   { at: 100, en: "FROST — nothing left but climb", he: "הכפור — נשאר רק לטפס" },
 ];
 
-export function storyBeat(floor: number, lang: Lang): string | null {
+export function storyBeat(floor: number, _lang: Lang): string | null {
   let line: string | null = null;
   for (const b of BEATS) {
-    if (floor >= b.at) line = lang === "he" ? b.he : b.en;
+    if (floor >= b.at) line = b.en; // English-only UI
   }
   return line;
 }

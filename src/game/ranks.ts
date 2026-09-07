@@ -33,7 +33,7 @@ export function rankProgress(floor: number): number {
   return span <= 0 ? 1 : Math.min(1, (floor - cur.at) / span);
 }
 
-export function rankName(floor: number, lang: "he" | "en"): string {
+export function rankName(floor: number, _lang: "he" | "en"): string {
   const r = rankOf(floor);
-  return lang === "he" ? r.nameHe : r.nameEn;
+  return r.nameEn; // English-only UI
 }

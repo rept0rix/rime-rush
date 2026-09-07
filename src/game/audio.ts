@@ -152,8 +152,8 @@ export class AudioBus {
     if (this.ctx?.state === "running") void this.ctx.suspend();
   }
 
-  setLang(lang: "he" | "en"): void {
-    this.lang = lang;
+  setLang(_lang: "he" | "en"): void {
+    this.lang = "en"; // English-only UI
   }
 
   setHeat(n: number): void {

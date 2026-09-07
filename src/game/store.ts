@@ -56,7 +56,7 @@ export const useGame = create<GameStore>((set, get) => ({
   overlay: null,
   unreadNotes: 0,
   patchSave: (p) => {
-    const save = { ...get().save, ...p };
+    const save = { ...get().save, ...p, lang: "en" as const };
     writeSave(save);
     set({ save });
     if (typeof p.mute === "boolean") audioBus.setMute(p.mute);
@@ -81,7 +81,7 @@ export const useGame = create<GameStore>((set, get) => ({
   setUnreadNotes: (unreadNotes) => set({ unreadNotes }),
 }));
 
-export function displayName(save: SaveData, lang: Lang): string {
+export function displayName(save: SaveData, _lang: Lang): string {
   if (save.name.trim()) return save.name.trim().slice(0, 12);
-  return lang === "he" ? "שחקן" : "Player";
+  return "Player"; // English-only UI
 }
