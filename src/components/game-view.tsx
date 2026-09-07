@@ -1,6 +1,7 @@
 import { ContinueOffer } from "@/components/continue-offer";
 import { MuteButton } from "@/components/mute-button";
 import { ComboHud } from "@/components/combo-hud";
+import { RivalStrip } from "@/components/rival-strip";
 import { useLiveTower } from "@/components/live-tower";
 import { TouchControls } from "@/components/touch-controls";
 import { Pause, Play } from "lucide-react";
@@ -173,15 +174,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
             </div>
           </div>
 
-          {hud.others.length > 0 && (
-            <p className="mt-1 truncate text-center text-[10px] font-bold tracking-wide text-ice/75">
-              {hud.others
-                .filter((o) => o.alive)
-                .slice(0, 3)
-                .map((o) => `${o.name} ${o.floor}`)
-                .join(" · ")}
-            </p>
-          )}
+          <RivalStrip others={hud.others} />
         </div>
       )}
 

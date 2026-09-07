@@ -83,7 +83,7 @@ export interface HudSnap {
   ammo: number;
   alive: boolean;
   paused: boolean;
-  others: { id: string; name: string; floor: number; alive: boolean; color: number; off: "up" | "down" | "on" }[];
+  others: { id: string; name: string; floor: number; score: number; power: PowerId | null; alive: boolean; color: number; off: "up" | "down" | "on" }[];
   killIn: number | null;
   hint: string | null;
   danger: boolean;
@@ -1429,6 +1429,8 @@ export class RimeEngine {
 					id: o.id,
 					name: o.name,
 					floor: o.floor,
+					score: o.score,
+					power: o.power,
 					alive: o.alive,
 					color: o.color,
 					off: sy < 48 ? "up" : sy > this.viewH - 96 ? "down" : "on"
