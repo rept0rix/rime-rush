@@ -1,0 +1,20 @@
+# Changelog
+
+## [Unreleased]
+- Full-height page (no bottom clip)
+- Louder death whoosh on YOU FELL
+- Kenney CC0 jump / double / super / land SFX (`8bc5284`)
+
+## [v0.3.0] — 2026-09-07
+- Rival strip on timeline top (name, power, points, level, tiny avatar)
+- English-only UI at runtime
+- Plaque app icons and favicon
+- Kill mechanical TTS that spoke actions
+
+## [v0.2.0] — 2026-09-06
+- One music bed (no lobby+climb stack)
+- Multiplayer end: spectate winner, then close room with Home / Room
+
+## [v0.1.0] — 2026-09-02
+- Public play at https://rime-rush.vercel.app
+- Neon shared board, combat i-frames, always-on mute
