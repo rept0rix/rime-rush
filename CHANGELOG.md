@@ -1,9 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+
+## [v0.3.1] — 2026-09-14
 - Full-height page (no bottom clip)
 - Louder death whoosh on YOU FELL
-- Kenney CC0 jump / double / super / land SFX (`8bc5284`)
+- Kenney CC0 jump / double / super / land SFX
 
 ## [v0.3.0] — 2026-09-07
 - Rival strip on timeline top (name, power, points, level, tiny avatar)
