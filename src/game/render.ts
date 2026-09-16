@@ -619,8 +619,20 @@ function drawPlayer(
   else if (!isLocal) ctx.globalAlpha *= 0.72;
 
   if (isLocal) {
-    ctx.strokeStyle = "#7ee7ff";
-    ctx.lineWidth = 2;
+    const hy = -dh * 0.45;
+    const rings: [number, number, number][] = [
+      [dw * 0.78, dh * 0.62, 0.05],
+      [dw * 0.64, dh * 0.52, 0.1],
+      [dw * 0.52, dh * 0.42, 0.16],
+    ];
+    for (const [rx, ry, a] of rings) {
+      ctx.beginPath();
+      ctx.ellipse(0, hy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(126,231,255,${a})`;
+      ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(126,231,255,0.55)";
+    ctx.lineWidth = 1.25;
     roundRect(ctx, -dw / 2 - 1, -dh - 1, dw + 2, dh + 2, 10);
     ctx.stroke();
   }
@@ -723,22 +735,6 @@ function drawPlayer(
     ctx.globalAlpha = isLocal ? 1 : 0.78;
     ctx.fillText(label, p.x, ny);
     ctx.globalAlpha = 1;
-    if (isLocal) {
-      const pipX = p.x + ctx.measureText(label).width / 2 + 7;
-      const pipY = ny - 3;
-      ctx.beginPath();
-      ctx.moveTo(pipX, pipY - 4);
-      ctx.lineTo(pipX + 4, pipY);
-      ctx.lineTo(pipX, pipY + 4);
-      ctx.lineTo(pipX - 4, pipY);
-      ctx.closePath();
-      ctx.fillStyle = "#7ee7ff";
-      ctx.fill();
-      ctx.fillStyle = "#e8f4ff";
-      ctx.beginPath();
-      ctx.arc(pipX, pipY, 1.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
   }
 }
 

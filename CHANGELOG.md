@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [v0.3.2]
+- Soft ME ice glow halo (concentric #7ee7ff ellipses) instead of sharp square + diamond pip
+
 ## [v0.3.1] — 2026-09-14
 - Full-height page (no bottom clip)
 - Louder death whoosh on YOU FELL
