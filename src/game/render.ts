@@ -603,7 +603,7 @@ function drawPlayer(
     ctx.globalAlpha = 0.9;
   }
   const sq = p.squash;
-  const squashX = sq < 1 ? 1 + (1 - sq) * 0.85 : 1 / Math.sqrt(sq);
+  const squashX = sq < 1 ? 1 + (1 - sq) * 1.05 : 1 / Math.sqrt(sq);
   const squashY = sq;
   const shadowW = sq < 0.85 ? 14 * (1 + (1 - sq) * 1.1) : 14;
   ctx.beginPath();

@@ -208,7 +208,8 @@ export function stepPlayer(
 
   p.spin = 0;
   p.spinV = 0;
-  p.squash += (1 - p.squash) * Math.min(1, F.SQUASH_RECOVER * dt);
+  const recover = p.squash < 1 ? F.LAND_SQUASH_RECOVER : F.SQUASH_RECOVER;
+  p.squash += (1 - p.squash) * Math.min(1, recover * dt);
 
   const hb = hitbox(p);
   if (p.y > 8) {

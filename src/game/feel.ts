@@ -36,12 +36,14 @@ export const F = {
   CAM_LOOKAHEAD: 0.12,
 
   /** Visual juice — squash/stretch + brief hitstop (draw-only; not hitbox). */
-  LAND_SQUASH: 0.58,
-  LAND_SQUASH_SPRING: 0.5,
-  LAND_SQUASH_HARD: 0.52,
+  LAND_SQUASH: 0.52,
+  LAND_SQUASH_SPRING: 0.46,
+  LAND_SQUASH_HARD: 0.48,
   JUMP_STRETCH: 1.24,
   HIT_STRETCH: 1.2,
   SQUASH_RECOVER: 11,
+  /** Snappy land settle — clear pulse, not rubber. */
+  LAND_SQUASH_RECOVER: 20,
   HITSTOP_HIT: 0.05,
 } as const;
 
