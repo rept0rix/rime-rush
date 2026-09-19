@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [v0.3.3]
+- Stickier jump/land: longer coyote + jump buffer, slightly more felt land squash
+
 ## [v0.3.2] — 2026-09-19
 - Short clear land settle squash on ledge (snappy, not rubber)
 - Soft ME ice glow halo (concentric #7ee7ff ellipses) instead of sharp square + diamond pip
