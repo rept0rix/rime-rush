@@ -167,7 +167,7 @@ export function stepPlayer(
   else p.airT += dt;
 
   const magnetWall = e.magnetT > 0 && p.onWall !== 0;
-  const wallKick = p.onWall !== 0 && p.airT > 0.08 && !p.grounded;
+  const wallKick = p.onWall !== 0 && p.airT > 0.05 && !p.grounded;
   const canJump = !frozen && (p.coyote > 0 || magnetWall || wallKick);
   if (p.jumpBuf > 0 && canJump) {
     bounceUp(p, juice);
@@ -187,7 +187,7 @@ export function stepPlayer(
   p.onWall = 0;
   for (let i = 0; i < steps; i++) integrate(p, world, sdt, juice);
 
-  if (p.grounded && input.jumpHeld && !wasGround) p.jumpBuf = Math.max(p.jumpBuf, 0.1);
+  if (p.grounded && input.jumpHeld && !wasGround) p.jumpBuf = Math.max(p.jumpBuf, F.JUMP_BUF * 0.55);
 
   if (p.combo > 0) {
     p.comboT -= dt;

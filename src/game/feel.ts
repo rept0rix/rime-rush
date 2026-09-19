@@ -15,14 +15,14 @@ export const F = {
   SPEED_TO_JUMP: 1.5,
   GRAVITY: 1380,
   TERM_VEL: 920,
-  COYOTE: 0.18,
-  JUMP_BUF: 0.22,
+  COYOTE: 0.26,
+  JUMP_BUF: 0.3,
 
   WALL_BOUNCE: 0.82,
   WALL_BOOST: 0,
   WALL_LOCK: 0.08,
 
-  LANDING_OVERLAP: 0.22,
+  LANDING_OVERLAP: 0.28,
   COMBO_TIMEOUT: 3.8,
   MAX_COMBO: 80,
 
@@ -36,14 +36,14 @@ export const F = {
   CAM_LOOKAHEAD: 0.12,
 
   /** Visual juice — squash/stretch + brief hitstop (draw-only; not hitbox). */
-  LAND_SQUASH: 0.5,
-  LAND_SQUASH_SPRING: 0.44,
-  LAND_SQUASH_HARD: 0.46,
+  LAND_SQUASH: 0.46,
+  LAND_SQUASH_SPRING: 0.4,
+  LAND_SQUASH_HARD: 0.42,
   JUMP_STRETCH: 1.24,
   HIT_STRETCH: 1.2,
   SQUASH_RECOVER: 11,
   /** Snappy land settle — clear pulse, not rubber. */
-  LAND_SQUASH_RECOVER: 16,
+  LAND_SQUASH_RECOVER: 13,
   HITSTOP_HIT: 0.05,
 } as const;
 
