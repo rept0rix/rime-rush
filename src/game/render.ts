@@ -574,7 +574,7 @@ function drawPlayer(
 ): void {
   const sy = worldToScreen(p.y, cam, viewH);
   if (sy < -60 || sy > viewH + 60) return;
-  const color = PLAYER_COLORS[p.color % 4]!;
+  const color = PLAYER_COLORS[((p.color % PLAYER_COLORS.length) + PLAYER_COLORS.length) % PLAYER_COLORS.length]!;
   const s = p.effects.shrinkT > 0 ? 0.88 : 1;
   const img = sprites.frame(p.anim, p.animT, p.color);
   const ratio = img && img.height > 0 ? img.width / img.height : DRAW_W / DRAW_H;
@@ -642,6 +642,23 @@ function drawPlayer(
     ctx.fillStyle = color;
     roundRect(ctx, -12, -40, 24, 40, 10);
     ctx.fill();
+  }
+  // Roster identity rim (distinct from ME ice halo).
+  if (!isLocal) {
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = 2;
+    roundRect(ctx, -dw / 2 - 1, -dh - 1, dw + 2, dh + 2, 10);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  } else {
+    // Soft roster tint pip under feet for local color identity while ME glow stays ice.
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 7, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   if (isLocal && p.hurtT > 0) {
@@ -1021,7 +1038,7 @@ function drawOffscreen(
     const up = sy < 72;
     const cx = Math.max(52, Math.min(viewW - 52, o.x));
     const cy = up ? 58 : viewH - 118;
-    const col = o.alive ? (o.faction === "ember" ? "#ff4d8a" : PLAYER_COLORS[o.color % 4]!) : "#8a7a68";
+    const col = o.alive ? (o.faction === "ember" ? "#ff4d8a" : PLAYER_COLORS[((o.color % PLAYER_COLORS.length) + PLAYER_COLORS.length) % PLAYER_COLORS.length]!) : "#8a7a68";
     ctx.fillStyle = "rgba(12,8,6,0.82)";
     roundRect(ctx, cx - 32, up ? cy - 6 : cy - 18, 64, 24, 10);
     ctx.fill();

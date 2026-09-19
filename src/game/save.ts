@@ -34,7 +34,7 @@ function baseDefaults(): SaveData {
     badges: [],
     weapon: "blade",
     coins: 0,
-    ownedSkins: [0],
+    ownedSkins: Array.from({ length: 12 }, (_, i) => i),
     ownedWeapons: ["blade"],
     seenBoard: false,
     authProvider: "",
@@ -70,6 +70,9 @@ function migrate(raw: SaveData): SaveData {
       : 3;
   }
   if (!merged.weapon) merged.weapon = "blade";
+  // Unlock full 12-climber roster for clear differentiation.
+  merged.ownedSkins = Array.from({ length: 12 }, (_, i) => i);
+  if (merged.color < 0 || merged.color > 11) merged.color = 0;
   if (merged.weapon && !merged.ownedWeapons.includes(merged.weapon)) {
     merged.ownedWeapons = [...merged.ownedWeapons, merged.weapon];
   }

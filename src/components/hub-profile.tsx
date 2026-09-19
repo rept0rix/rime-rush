@@ -12,6 +12,7 @@ import { t } from "@/game/i18n";
 import { rankName } from "@/game/ranks";
 import { makeRoomCode } from "@/game/room";
 import { SKIN_PRICE, WEAPON_SHOP } from "@/game/shop";
+import { PLAYER_COLORS } from "@/game/constants";
 import { SKINS } from "@/game/sprites";
 import { useGame } from "@/game/store";
 import type { PresenceStatus, WeaponId } from "@/game/types";
@@ -276,19 +277,26 @@ export function HubProfile() {
 
       <h2 className="mt-5 font-display text-2xl text-ice">Characters</h2>
       <p className="text-[11px] text-muted">Owned — tap to wear. Locked — buy with coins.</p>
-      <div className="mt-2 grid grid-cols-4 gap-2">
+      <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
         {SKINS.map((sk, i) => {
           const owned = save.ownedSkins.includes(i);
           const price = SKIN_PRICE[i] ?? 0;
           const on = save.color === i;
           return (
             <button
-              key={sk.id}
+              key={`${sk.id}-${i}`}
               type="button"
               onClick={() => buySkin(i)}
               className={`rounded-2xl border-2 bg-bg p-1.5 ${on ? "border-ice" : "border-line"} ${owned ? "" : "opacity-70"}`}
+              style={{ boxShadow: on ? `0 0 0 2px ${PLAYER_COLORS[i % PLAYER_COLORS.length]}` : undefined }}
             >
-              <img src={`/sprites/${sk.id}/idle.png`} alt={sk.name} className="mx-auto h-14 w-auto object-contain" />
+              <div className="relative mx-auto flex h-14 w-full items-center justify-center">
+                <img src={`/sprites/${sk.id}/idle.png`} alt={sk.name} className="h-14 w-auto object-contain" />
+                <span
+                  className="absolute bottom-0 right-1 size-3 rounded-full border border-bg"
+                  style={{ background: PLAYER_COLORS[i % PLAYER_COLORS.length] }}
+                />
+              </div>
               <p className="mt-0.5 text-[10px] font-bold">{sk.name}</p>
               <p className="text-[10px] text-gold">{owned ? (on ? "ON" : "HAVE") : `${price}`}</p>
             </button>

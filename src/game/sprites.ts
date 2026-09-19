@@ -5,6 +5,14 @@ export const SKINS = [
   { id: "ember", name: "Ember" },
   { id: "nova", name: "Nova" },
   { id: "frost", name: "Frost" },
+  { id: "hopper", name: "Spark" },
+  { id: "ember", name: "Blaze" },
+  { id: "nova", name: "Pulse" },
+  { id: "frost", name: "Glacier" },
+  { id: "hopper", name: "Jade" },
+  { id: "ember", name: "Magma" },
+  { id: "nova", name: "Violet" },
+  { id: "frost", name: "Mist" },
 ] as const;
 
 const HOPPER: Record<SheetName, string[]> = {
@@ -105,7 +113,14 @@ export class SpriteBank {
   }
 
   private async loadHopper(): Promise<void> {
-    const urls = [...new Set(Object.values(HOPPER).flat())].filter((src) => src !== "/sprites/hopper/idle.png");
+    const urls = [
+      ...new Set([
+        ...Object.values(HOPPER).flat(),
+        ...Object.values(alt("ember")).flat(),
+        ...Object.values(alt("nova")).flat(),
+        ...Object.values(alt("frost")).flat(),
+      ]),
+    ].filter((src) => src !== "/sprites/hopper/idle.png");
     const loaded = await Promise.all(urls.map((src) => loadImg(src)));
     urls.forEach((src, i) => {
       const img = loaded[i];

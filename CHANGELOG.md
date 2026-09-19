@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [v0.3.4]
+- 12-climber roster with names + portraits in hub (grid); distinct tints on field; lobby auto-unique colors
+
 ## [v0.3.3]
 - Stickier climb feel: longer coyote/jump buffer, forgiving ledge overlap, clearer land squash through rejump
 

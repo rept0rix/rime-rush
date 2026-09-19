@@ -50,7 +50,20 @@ export const STATE_HZ = 20;
 export const MAX_PLAYERS = 4;
 export const RACE_FLOOR = 60;
 
-export const PLAYER_COLORS = ["#7ee7ff", "#ff4d8a", "#ffd36a", "#7cffb2"] as const;
+export const PLAYER_COLORS = [
+  "#7ee7ff",
+  "#ff4d8a",
+  "#ffd36a",
+  "#7cffb2",
+  "#c4a0ff",
+  "#ff8a4d",
+  "#4dffd6",
+  "#ff6bcb",
+  "#a8ff4d",
+  "#4d8aff",
+  "#ffd0a0",
+  "#d4d4ff",
+] as const;
 export const PLAYER_HUES = [0, 150, -145, -72] as const;
 
 export const COMBO_TITLES_HE: { at: number; label: string }[] = [

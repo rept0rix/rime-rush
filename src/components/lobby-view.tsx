@@ -144,10 +144,11 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
     );
   }
 
+  const peerColors = pickUniqueColors(save.color, p2p.peers.length);
   const others = p2p.peers.map((peer, i) => ({
     id: peer.id,
     name: peer.name || `P${i + 2}`,
-    color: (save.color + 1 + i) % 4,
+    color: peerColors[i] ?? ((save.color + 1 + i) % SKINS.length),
     ready: peer.connectionState === "connected",
     state: peer.connectionState,
   }));
@@ -161,7 +162,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
     if (fillBots) {
       const need = Math.max(0, 4 - (1 + others.filter((o) => o.ready).length));
       for (let i = 0; i < need; i++) {
-        bots.push({ id: `bot-${i}`, name: botName(i, save.lang), color: (save.color + 1 + i) % 4 });
+        bots.push({ id: `bot-${i}`, name: botName(i, save.lang), color: pickUniqueColors(save.color, 3)[i] ?? ((save.color + 1 + i) % SKINS.length) });
       }
     }
     const seed = (Math.random() * 1e9) | 0;
@@ -333,6 +334,26 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
   );
 }
 
+
+function pickUniqueColors(selfColor: number, count: number): number[] {
+  const n = SKINS.length;
+  const used = new Set<number>([((selfColor % n) + n) % n]);
+  const out: number[] = [];
+  for (let i = 0; i < count; i++) {
+    let chosen = (selfColor + 1 + i) % n;
+    for (let k = 0; k < n; k++) {
+      const tryC = (selfColor + 1 + i + k) % n;
+      if (!used.has(tryC)) {
+        chosen = tryC;
+        break;
+      }
+    }
+    used.add(chosen);
+    out.push(chosen);
+  }
+  return out;
+}
+
 function Seat({ name, color, tag }: { name: string; color: number; tag: string }) {
   const skin = SKINS[color % SKINS.length]!;
   return (
@@ -371,7 +392,7 @@ function publishLobby(
     ...p2p.peers.map((p, i) => ({
       id: p.id,
       name: p.name || `P${i + 2}`,
-      color: (color + 1 + i) % 4,
+      color: pickUniqueColors(color, p2p.peers.length)[i] ?? ((color + 1 + i) % SKINS.length),
       ready: p.connectionState === "connected",
       bot: false,
     })),

@@ -20,7 +20,7 @@ export function RivalStrip({ others }: { others: RivalRow[] }) {
   return (
     <div className="mt-1 flex gap-1 overflow-x-auto">
       {rows.map((o) => {
-        const col = PLAYER_COLORS[o.color % 4]!;
+        const col = PLAYER_COLORS[((o.color % PLAYER_COLORS.length) + PLAYER_COLORS.length) % PLAYER_COLORS.length]!;
         const power = o.power ? POWER_NAME.en[o.power] : "—";
         return (
           <div
