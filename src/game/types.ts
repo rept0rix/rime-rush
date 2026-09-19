@@ -74,6 +74,7 @@ export interface Player {
   id: string;
   name: string;
   color: number;
+  outfit: number;
   bot: boolean;
   faction: Faction;
   x: number;
@@ -168,12 +169,13 @@ export interface LobbyPlayer {
   id: string;
   name: string;
   color: number;
+  outfit: number;
   ready: boolean;
   bot: boolean;
 }
 
 export type NetMsg =
-  | { t: "hello"; name: string; color: number }
+  | { t: "hello"; name: string; color: number; outfit?: number }
   | { t: "lobby"; hostId: string; mode: Mode; bots: boolean; raceFloor: number; players: LobbyPlayer[] }
   | { t: "start"; seed: number; mode: Mode; raceFloor: number; bots: BotSeed[] }
   | { t: "state"; p: NetPlayer }
@@ -187,6 +189,7 @@ export interface BotSeed {
   id: string;
   name: string;
   color: number;
+  outfit?: number;
 }
 
 export interface NetPlayer {
@@ -215,6 +218,7 @@ export interface SaveData {
   lang: Lang;
   name: string;
   color: number;
+  outfit: number;
   mute: boolean;
   shake: boolean;
   bestFloor: number;

@@ -3,7 +3,7 @@ import type { Lang, PresenceStatus, SaveData } from "./types";
 export type { SaveData };
 
 const KEY = "rime-rush-save-v1";
-const SAVE_VERSION = 9;
+const SAVE_VERSION = 10;
 
 function cleanStatus(v: unknown): PresenceStatus {
   return v === "offline" || v === "waiting" ? v : "online";
@@ -24,6 +24,7 @@ function baseDefaults(): SaveData {
     lang: detectLang(),
     name: "",
     color: 0,
+    outfit: 0,
     mute: false,
     shake: true,
     bestFloor: 0,
@@ -73,6 +74,8 @@ function migrate(raw: SaveData): SaveData {
   // Unlock full 12-climber roster for clear differentiation.
   merged.ownedSkins = Array.from({ length: 12 }, (_, i) => i);
   if (merged.color < 0 || merged.color > 11) merged.color = 0;
+  const rawOutfit = (raw as { outfit?: unknown }).outfit;
+  merged.outfit = typeof rawOutfit === "number" && rawOutfit >= 0 && rawOutfit <= 2 ? Math.floor(rawOutfit) : 0;
   if (merged.weapon && !merged.ownedWeapons.includes(merged.weapon)) {
     merged.ownedWeapons = [...merged.ownedWeapons, merged.weapon];
   }

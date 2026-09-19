@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [v0.3.5]
+- Climber outfits: Classic / Scarf / Stripe per climber, saved, shown in hub + lobby + climb
+
 ## [v0.3.4]
 - 12-climber roster with names + portraits in hub (grid); distinct tints on field; lobby auto-unique colors
 

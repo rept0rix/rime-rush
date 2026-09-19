@@ -110,10 +110,11 @@ export interface Boot {
   localId: string;
   localName: string;
   localColor: number;
+  localOutfit?: number;
   lang: Lang;
   shake: boolean;
   mute: boolean;
-  bots: { id: string; name: string; color: number }[];
+  bots: { id: string; name: string; color: number; outfit?: number }[];
   weapon?: WeaponId;
   raceFloor?: number;
   attract?: boolean;
@@ -214,11 +215,11 @@ export class RimeEngine {
 		this.audio.setLang(boot.lang);
 		this.debugOn = false;
 		const slots = spawnSlots(1 + boot.bots.length);
-		const local = makePlayer(boot.localId, boot.localName, boot.localColor, slots[0]!);
+		const local = makePlayer(boot.localId, boot.localName, boot.localColor, slots[0]!, false, boot.localOutfit ?? 0);
 		this.arm(local, boot.weapon ?? "blade");
 		this.players.push(local);
 		boot.bots.forEach((b, i) => {
-			const bot = makePlayer(b.id, b.name, b.color, slots[i + 1] ?? slots[0]!, true);
+			const bot = makePlayer(b.id, b.name, b.color, slots[i + 1] ?? slots[0]!, true, b.outfit ?? (i % 3));
 			this.arm(bot, i % 2 === 0 ? "gun" : "blade");
 			this.players.push(bot);
 		});

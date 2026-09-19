@@ -5,6 +5,7 @@ import { StatusDot } from "@/components/status-dot";
 import { audioBus } from "@/game/audio";
 import { makeRoomCode, roomId } from "@/game/room";
 import { botName } from "@/game/bots";
+import { outfitAccent } from "@/game/outfits";
 import { SKINS } from "@/game/sprites";
 import { displayName, useGame } from "@/game/store";
 import { addFriend, getDashboard, inviteFriend, type PresenceRow } from "@/lib/rime-data";
@@ -92,12 +93,12 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
       } else if (msg.t === "start") {
         setStarted({ seed: msg.seed, mode: msg.mode, bots: msg.bots });
       } else if (msg.t === "hello") {
-        if (host) publishLobby(p2p, save.color, name, mpMode, fillBots, p2p.selfId);
+        if (host) publishLobby(p2p, save.color, save.outfit, name, mpMode, fillBots, p2p.selfId);
       }
     });
     const tmr = window.setTimeout(() => {
-      p2p.send({ t: "hello", name, color: save.color } satisfies NetMsg);
-      if (host) publishLobby(p2p, save.color, name, mpMode, fillBots, p2p.selfId);
+      p2p.send({ t: "hello", name, color: save.color, outfit: save.outfit } satisfies NetMsg);
+      if (host) publishLobby(p2p, save.color, save.outfit, name, mpMode, fillBots, p2p.selfId);
     }, 400);
     return () => {
       unsub();
@@ -106,7 +107,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
   }, [p2p.onMessage, p2p.send, p2p.selfId, host, name, save.color, mpMode, fillBots]);
 
   useEffect(() => {
-    if (host) publishLobby(p2p, save.color, name, mpMode, fillBots, p2p.selfId);
+    if (host) publishLobby(p2p, save.color, save.outfit, name, mpMode, fillBots, p2p.selfId);
   }, [p2p.send, p2p.selfId, p2p.peers, host, fillBots, mpMode, name, save.color]);
 
   if (result && started) {
@@ -149,6 +150,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
     id: peer.id,
     name: peer.name || `P${i + 2}`,
     color: peerColors[i] ?? ((save.color + 1 + i) % SKINS.length),
+    outfit: (i + 1) % 3,
     ready: peer.connectionState === "connected",
     state: peer.connectionState,
   }));
@@ -162,7 +164,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
     if (fillBots) {
       const need = Math.max(0, 4 - (1 + others.filter((o) => o.ready).length));
       for (let i = 0; i < need; i++) {
-        bots.push({ id: `bot-${i}`, name: botName(i, save.lang), color: pickUniqueColors(save.color, 3)[i] ?? ((save.color + 1 + i) % SKINS.length) });
+        bots.push({ id: `bot-${i}`, name: botName(i, save.lang), color: pickUniqueColors(save.color, 3)[i] ?? ((save.color + 1 + i) % SKINS.length), outfit: (i + 1) % 3 });
       }
     }
     const seed = (Math.random() * 1e9) | 0;
@@ -230,7 +232,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
       <div className="mt-1 grid grid-cols-2 gap-2">
         {seats.map((s, i) => {
           if (s.kind === "you") {
-            return <Seat key="you" name={name} color={save.color} tag={host ? "HOST" : "YOU"} />;
+            return <Seat key="you" name={name} color={save.color} outfit={save.outfit} tag={host ? "HOST" : "YOU"} />;
           }
           if (s.kind === "peer") {
             return (
@@ -238,6 +240,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
                 key={s.p.id}
                 name={s.p.name}
                 color={s.p.color}
+                outfit={s.p.outfit ?? 0}
                 tag={s.p.ready ? "IN" : s.p.state}
               />
             );
@@ -354,11 +357,31 @@ function pickUniqueColors(selfColor: number, count: number): number[] {
   return out;
 }
 
-function Seat({ name, color, tag }: { name: string; color: number; tag: string }) {
+function Seat({
+  name,
+  color,
+  outfit = 0,
+  tag,
+}: {
+  name: string;
+  color: number;
+  outfit?: number;
+  tag: string;
+}) {
   const skin = SKINS[color % SKINS.length]!;
+  const accent = outfitAccent(color, outfit);
   return (
     <div className="flex items-center gap-2 rounded-2xl border-2 border-[#5a3a20] bg-[#1a100c] px-2 py-2">
-      <img src={`/sprites/${skin.id}/idle.png`} alt="" className="h-12 w-12 object-contain" />
+      <div className="relative">
+        <img src={`/sprites/${skin.id}/idle.png`} alt="" className="h-12 w-12 object-contain" />
+        {outfit > 0 ? (
+          <span
+            className="absolute bottom-0 left-1 right-1 h-1.5 rounded-full"
+            style={{ background: accent }}
+            title={outfit === 1 ? "Scarf" : "Stripe"}
+          />
+        ) : null}
+      </div>
       <div className="min-w-0">
         <p className="truncate text-sm font-bold">{name}</p>
         <p className="text-[10px] text-gold">{tag}</p>
@@ -382,17 +405,19 @@ function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; c
 function publishLobby(
   p2p: { selfId: string; send: (d: unknown) => void; peers: { id: string; name: string; connectionState: string }[] },
   color: number,
+  outfit: number,
   name: string,
   mode: "laststand" | "race",
   bots: boolean,
   hostId: string,
 ) {
   const players: LobbyPlayer[] = [
-    { id: p2p.selfId, name, color, ready: true, bot: false },
+    { id: p2p.selfId, name, color, outfit, ready: true, bot: false },
     ...p2p.peers.map((p, i) => ({
       id: p.id,
       name: p.name || `P${i + 2}`,
       color: pickUniqueColors(color, p2p.peers.length)[i] ?? ((color + 1 + i) % SKINS.length),
+      outfit: (i + 1) % 3,
       ready: p.connectionState === "connected",
       bot: false,
     })),

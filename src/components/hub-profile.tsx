@@ -13,6 +13,7 @@ import { rankName } from "@/game/ranks";
 import { makeRoomCode } from "@/game/room";
 import { SKIN_PRICE, WEAPON_SHOP } from "@/game/shop";
 import { PLAYER_COLORS } from "@/game/constants";
+import { OUTFITS, outfitAccent } from "@/game/outfits";
 import { SKINS } from "@/game/sprites";
 import { useGame } from "@/game/store";
 import type { PresenceStatus, WeaponId } from "@/game/types";
@@ -299,6 +300,35 @@ export function HubProfile() {
               </div>
               <p className="mt-0.5 text-[10px] font-bold">{sk.name}</p>
               <p className="text-[10px] text-gold">{owned ? (on ? "ON" : "HAVE") : `${price}`}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <h2 className="mt-5 font-display text-2xl text-ice">Outfits</h2>
+      <p className="text-[11px] text-muted">Classic, scarf, or stripe — same climber, light layer.</p>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {OUTFITS.map((o) => {
+          const on = save.outfit === o.id;
+          const accent = outfitAccent(save.color, o.id);
+          return (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => patchSave({ outfit: o.id })}
+              className={`rounded-2xl border-2 bg-bg px-2 py-3 text-center ${on ? "border-ice" : "border-line"}`}
+            >
+              <span
+                className="mx-auto mb-1 block h-3 w-10 rounded-full"
+                style={{
+                  background:
+                    o.layer === "none"
+                      ? PLAYER_COLORS[save.color % PLAYER_COLORS.length]
+                      : accent,
+                }}
+              />
+              <p className="text-[11px] font-bold">{o.name}</p>
+              <p className="text-[10px] text-gold">{on ? "ON" : "WEAR"}</p>
             </button>
           );
         })}

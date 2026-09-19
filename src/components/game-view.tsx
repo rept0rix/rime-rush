@@ -71,6 +71,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
         localId,
         localName: displayName(save, lang),
         localColor: save.color,
+      localOutfit: save.outfit,
         lang,
         shake: save.shake,
         mute: save.mute,

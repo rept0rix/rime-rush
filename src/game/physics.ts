@@ -26,11 +26,13 @@ export function makePlayer(
   color: number,
   spawnX: number,
   bot = false,
+  outfit = 0,
 ): Player {
   return {
     id,
     name,
     color,
+    outfit: ((outfit % 3) + 3) % 3,
     bot,
     faction: bot ? "ember" : "rime",
     x: spawnX,

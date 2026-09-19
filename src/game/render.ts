@@ -6,6 +6,7 @@ import {
   PLAYER_COLORS,
   WALL,
 } from "./constants";
+import { outfitAccent, outfitOf } from "./outfits";
 import { drawArcadeWorld, WALL_PALETTE, WORLD_TITLE, worldForFloor, type ArcadeWorld } from "./arcade-bg";
 import { POWER_BY_ID } from "./powers";
 import { POWER_NAME } from "./i18n";
@@ -562,6 +563,46 @@ function drawSpeedLines(
   ctx.restore();
 }
 
+
+function drawOutfitLayer(
+  ctx: CanvasRenderingContext2D,
+  p: Player,
+  dw: number,
+  dh: number,
+): void {
+  const o = outfitOf(p.outfit ?? 0);
+  if (o.layer === "none") return;
+  const accent = outfitAccent(p.color, p.outfit ?? 0);
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+  if (o.layer === "scarf") {
+    const y = -dh * 0.62;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = Math.max(2.5, dh * 0.07);
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-dw * 0.28, y);
+    ctx.quadraticCurveTo(0, y + dh * 0.06, dw * 0.28, y);
+    ctx.stroke();
+    ctx.lineWidth = Math.max(2, dh * 0.05);
+    ctx.beginPath();
+    ctx.moveTo(dw * 0.12, y + 1);
+    ctx.quadraticCurveTo(dw * 0.22, y + dh * 0.18, dw * 0.08, y + dh * 0.28);
+    ctx.stroke();
+  } else if (o.layer === "stripe") {
+    const y = -dh * 0.55;
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.moveTo(-dw * 0.38, y);
+    ctx.lineTo(dw * 0.38, y - dh * 0.04);
+    ctx.lineTo(dw * 0.34, y + dh * 0.1);
+    ctx.lineTo(-dw * 0.34, y + dh * 0.14);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawPlayer(
   ctx: CanvasRenderingContext2D,
   p: Player,
@@ -643,6 +684,7 @@ function drawPlayer(
     roundRect(ctx, -12, -40, 24, 40, 10);
     ctx.fill();
   }
+  drawOutfitLayer(ctx, p, dw, dh);
   // Roster identity rim (distinct from ME ice halo).
   if (!isLocal) {
     ctx.strokeStyle = color;
