@@ -1,7 +1,7 @@
 import { INNER_L, INNER_R } from "./constants";
 import { F } from "./feel";
 import type { Creep, Player } from "./types";
-import { floorTop, type World } from "./world";
+import { EASY_FLOORS, floorTop, type World } from "./world";
 
 let nextId = 1;
 
@@ -19,7 +19,9 @@ export function spawnCreep(world: World, floor: number): Creep | null {
   const speed =
     kind === "raider"
       ? 45 + Math.random() * 25
-      : 70 + Math.random() * 50 + (kind === "ember" ? 30 : 0);
+      : floor <= EASY_FLOORS
+        ? 48 + Math.random() * 30
+        : 70 + Math.random() * 50 + (kind === "ember" ? 30 : 0);
   return {
     id: nextId++,
     x: f.x + f.w * (0.2 + Math.random() * 0.6),

@@ -45,7 +45,9 @@ export class World {
   }
 
   gap(n: number): number {
-    return Math.min(GAP_MAX, BASE_GAP + n * GAP_GROW);
+    const g = Math.min(GAP_MAX, BASE_GAP + n * GAP_GROW);
+    // Onboarding ramp: floors 1-8 start shorter and meet the normal curve by 8.
+    return n <= EASY_FLOORS ? Math.min(g, 70 + n * 2.2) : g;
   }
 
   floorY(n: number): number {
@@ -186,7 +188,10 @@ export class World {
 
     let minW: number;
     let maxW: number;
-    if (n < 12) {
+    if (n <= EASY_FLOORS) {
+      minW = 196;
+      maxW = 236;
+    } else if (n < 12) {
       minW = 168;
       maxW = 220;
     } else if (n < 24) {
@@ -225,9 +230,9 @@ export class World {
     const w = minW + this.rng() * (maxW - minW);
     let x: number;
     if (this.lane < 0) {
-      x = INNER_L + pad + this.rng() * 18;
+      x = INNER_L + pad + this.rng() * 18 + (n <= EASY_FLOORS ? 14 : 0);
     } else if (this.lane > 0) {
-      x = INNER_R - pad - w - this.rng() * 18;
+      x = INNER_R - pad - w - this.rng() * 18 - (n <= EASY_FLOORS ? 14 : 0);
     } else {
       const slack = Math.max(12, inner - w);
       x = INNER_L + pad + slack * 0.25 + this.rng() * slack * 0.5;
@@ -255,6 +260,9 @@ export class World {
     return dy;
   }
 }
+
+/** Floors 1..EASY_FLOORS get the first-run ramp; everything above is untouched. */
+export const EASY_FLOORS = 8;
 
 export function floorTop(f: Floor): number {
   return f.y + FLOOR_H;

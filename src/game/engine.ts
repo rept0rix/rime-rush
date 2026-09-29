@@ -45,7 +45,7 @@ import type {
   PowerId,
   WeaponId,
 } from "./types";
-import { floorTop, World, dailySeed } from "./world";
+import { EASY_FLOORS, floorTop, World, dailySeed } from "./world";
 import { clientId } from "@/lib/client-id";
 import type { LiveClimber } from "@/lib/rime-data";
 
@@ -870,11 +870,12 @@ export class RimeEngine {
 		const top = this.highestFloor();
 		if (top > this.spawnedTo) {
 			for (let n = Math.max(this.spawnedTo + 1, top); n <= top + 2; n++) {
-				if (n >= 2 && n % 2 === 0) {
+				// First-run ramp: no creep until floor 4, no double spawns until floor 9.
+				if (n >= 4 && n % 2 === 0) {
 					const c = spawnCreep(this.world, n);
 					if (c) this.creeps.push(c);
 				}
-				if (n >= 6 && n % 3 === 0) {
+				if (n > EASY_FLOORS && n % 3 === 0) {
 					const c = spawnCreep(this.world, n);
 					if (c) this.creeps.push(c);
 				}

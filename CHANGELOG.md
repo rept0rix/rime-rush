@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## [v0.3.6]
+- First-run ramp on floors 1-8: shorter gaps (72 up to the normal 88 by floor 8), wider platforms pulled off the walls, no creep until floor 4, no double spawns until floor 9, slower early rats. Floors 9+ unchanged.
+
 ## [v0.3.5]
 - Climber outfits: Classic / Scarf / Stripe per climber, saved, shown in hub + lobby + climb
 
