@@ -415,6 +415,7 @@ export function HubHome() {
           weapon={hud.weapon}
           ammo={Math.ceil(hud.weaponT)}
           onMove={(x) => engineRef.current?.input.setTouch({ move: x })}
+          onJump={(d) => engineRef.current?.input.setTouch({ jump: d })}
           onPower={(d) => engineRef.current?.input.setTouch({ power: d })}
           onWeapon={(d) => engineRef.current?.input.setTouch({ weapon: d })}
         />

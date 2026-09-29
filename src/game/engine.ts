@@ -1439,7 +1439,7 @@ export class RimeEngine {
 				};
 			}),
 			killIn: Math.max(0, dist),
-			hint: showCoach ? "Hold LEFT / RIGHT. You bounce on your own. Faster = higher." : null,
+			hint: showCoach ? "Tap ▲ JUMP (Space / W / ↑) to hop. Hold ◀ ▶ (A / D) to run — faster = higher." : null,
 			danger: !!p && p.alive && this.time > F.SPAWN_PROTECT && dist < this.viewH * .22,
 			downed: !!p && !p.alive && this.waitingContinue,
 			continueLeft: this.continueT,

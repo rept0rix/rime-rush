@@ -2,6 +2,8 @@ import { audioBus } from "./audio";
 
 export function rumble(pat: number | number[] = 24): void {
   try {
+    // Chrome logs a blocked-call warning before the first user gesture; skip until then.
+    if ((navigator as { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive === false) return;
     navigator.vibrate?.(pat);
   } catch {
     /* iOS has no vibrate API */

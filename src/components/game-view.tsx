@@ -190,7 +190,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
       )}
 
       {hud?.hint && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[48px] z-10 flex justify-center px-5">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[132px] z-30 flex justify-center px-5">
           <p className="rounded-2xl bg-bg/75 px-3 py-1.5 text-center text-xs font-medium text-ice">
             {hud.hint}
           </p>
@@ -287,6 +287,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
           weapon={hud?.weapon ?? save.weapon ?? "blade"}
           ammo={Math.ceil(hud?.weaponT ?? 0)}
           onMove={(x) => engineRef.current?.input.setTouch({ move: x })}
+          onJump={(d) => engineRef.current?.input.setTouch({ jump: d })}
           onPower={(d) => engineRef.current?.input.setTouch({ power: d })}
           onWeapon={(d) => engineRef.current?.input.setTouch({ weapon: d })}
         />

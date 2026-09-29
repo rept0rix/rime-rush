@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [v0.3.7]
+- Visible touch pads on touch/narrow screens: ◀ LEFT, ▶ RIGHT (left thumb), ATK and a big ▲ JUMP (right thumb). Jump is now wired on touch.
+- First-PLAY coach line says how to jump on touch and keyboard; moved above the pads.
+- Haptics skip navigator.vibrate before the first user gesture (no blocked-call console spam).
+
 ## [v0.3.6]
 - First-run ramp on floors 1-8: shorter gaps (72 up to the normal 88 by floor 8), wider platforms pulled off the walls, no creep until floor 4, no double spawns until floor 9, slower early rats. Floors 9+ unchanged.
 

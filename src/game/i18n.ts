@@ -80,7 +80,7 @@ const en = {
   trainingHint: "No death line. Practice combos and wall bounces.",
   botHint: "Four climbers. Three hungry bots. Don't get shoved off.",
   clashHint: "Peer-to-peer room. Share the code. Best on the same Wi-Fi. Bots can fill empty slots.",
-  hintCoach: "Hold LEFT / RIGHT. You bounce on your own. Faster = higher.",
+  hintCoach: "Tap ▲ JUMP (Space / W / ↑) to hop. Hold ◀ ▶ (A / D) to run — faster = higher.",
   goYell: "GO!",
   comboDrop: "DROP",
   closeCall: "CLOSE!",
