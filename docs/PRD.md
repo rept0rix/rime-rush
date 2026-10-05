@@ -204,6 +204,7 @@ North-star (post P1): 50 names on one tower, two colors, nobody asking "is anyon
 
 | Date | What changed in the product |
 |---|---|
+| 2026-10-05 | Security PATCH v0.3.8: TanStack Start XSS fix (GHSA-qx66-fv34-fjm8). |
 | 2026-08-31 | Repo published. PRD written. README is the GitHub face. |
 | 2026-08-27 | Loading gate removed. Logo + PLAY stacked center. Assets deferred. Music compressed. |
 | 2026-08-26 | 30-ledge atlas, creep sprites, mute path, HUD declutter, crash hardening. |
