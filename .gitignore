@@ -39,3 +39,5 @@ assets/
 /tmp/
 playwright-report/
 test-results/
+.vercel
+.env*
