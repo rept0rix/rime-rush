@@ -10,7 +10,7 @@ import { InstallSheet } from "@/components/install-sheet";
 import { LobbyView } from "@/components/lobby-view";
 import { NoteInbox } from "@/components/note-inbox";
 import { audioBus } from "@/game/audio";
-import { dir, t } from "@/game/i18n";
+import { deathCauseLine, dir, t } from "@/game/i18n";
 import { useGame } from "@/game/store";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
@@ -141,6 +141,9 @@ function Results() {
         <img src="/ui/fell-board.png" alt="" className="w-full object-contain" />
         <div className="absolute inset-[12%] flex flex-col items-center justify-center">
           <img src="/ui/you-fell.png" alt="You fell" className="h-12 w-auto object-contain" />
+          <p className="mt-1 max-w-[240px] text-center text-xs font-semibold text-ice/90">
+            {deathCauseLine(result.deathCause)}
+          </p>
           <div className="mt-2 flex items-end gap-6 text-center">
             <Stat n={result.floor} l={copy.floor} />
             <Stat n={result.combo} l={copy.combo} />

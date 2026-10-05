@@ -29,7 +29,7 @@ import { spawnCreep, stepCreep } from "./creeps";
 import { writeLivePose } from "./live-snap";
 import { RAID_NAMES, storyBeat, storyJustHit } from "./story";
 import { rumble as buzz } from "./haptics";
-import type {
+import type { DeathCause,
   Corpse,
   Creep,
   GameResult,
@@ -96,6 +96,7 @@ export interface HudSnap {
   comboYell: string;
   lastGain: number;
   story: string | null;
+  deathCause: DeathCause | null;
 }
 
 export interface Boot {
@@ -179,6 +180,7 @@ export class RimeEngine {
 	corpses: Corpse[] = [];
 	pitY: number | null = null;
 	pitHit = false;
+	lastDeathCause: DeathCause = "fell";
 	ghostIds = new Set<string>();
 	comboKey = 0;
 	comboYell = "";
@@ -401,6 +403,7 @@ export class RimeEngine {
 		this.screamOn = false;
 		this.continueT = 0;
 		this.waitingContinue = false;
+		this.lastDeathCause = "fell";
 		this.audio.setScene("game");
 		this.audio.unlock();
 		this.audio.startFanfare();
@@ -522,6 +525,7 @@ export class RimeEngine {
 		this.screamOn = false;
 		this.continueT = 0;
 		this.waitingContinue = false;
+		this.lastDeathCause = "fell";
 		this.creeps = [];
 		this.spawnedTo = 0;
 		this.pitY = null;
@@ -673,7 +677,7 @@ export class RimeEngine {
 			}
 		}
 		for (let i = 0; i < this.players.length; i++) for (let j = i + 1; j < this.players.length; j++) collidePlayers(this.players[i], this.players[j], this.juice);
-		for (const p of this.players) if (p.alive && p.hp <= 0) this.kill(p);
+		for (const p of this.players) if (p.alive && p.hp <= 0) this.kill(p, "hazard");
 		this.tickFx(dt);
 		this.tickCreeps(dt);
 		this.restock(dt);
@@ -799,7 +803,7 @@ export class RimeEngine {
 		this.cam.shakeY = this.shakeOn ? (Math.random() * 2 - 1) * (6 + 18 * mag) * mag : 0;
 		this.trauma = Math.max(0, this.trauma - dt * 2.6);
 	}
-	hurt(p: any, dmg: any) {
+	hurt(p: any, dmg: any, cause: DeathCause = "hazard") {
 		if (!p.alive || p.effects.invulnT > 0) return;
 		if (p.effects.shield) {
 			p.effects.shield = false;
@@ -813,7 +817,7 @@ export class RimeEngine {
 			this.hitstop = Math.max(this.hitstop, F.HITSTOP_HIT);
 			this.punch(0.35);
 		}
-		if (p.hp <= 0) this.kill(p);
+		if (p.hp <= 0) this.kill(p, cause);
 	}
 	hitCreep(c: any, dmg: any, by: any) {
 		c.hp -= dmg;
@@ -867,7 +871,7 @@ export class RimeEngine {
 			if (Math.abs(c.x - prey.x) < (c.kind === "raider" ? 32 : 26) && Math.abs(c.y - prey.y) < (c.kind === "raider" ? 48 : 40) && c.hurtT <= 0) {
 				const dmg = c.kind === "raider" ? 28 : c.kind === "ember" ? 20 : c.kind === "bat" ? 12 : 16;
 				const knock = c.kind === "raider" ? 220 : 110;
-				this.hurt(prey, dmg);
+				this.hurt(prey, dmg, c.kind as DeathCause);
 				c.vx = -c.vx;
 				c.hurtT = c.kind === "raider" ? .55 : .45;
 				prey.vx += Math.sign(prey.x - c.x) * knock;
@@ -896,15 +900,16 @@ export class RimeEngine {
 				this.screamOn = true;
 				this.audio.scream();
 			}
-			if (p.y < line - 210) this.kill(p);
+			if (p.y < line - 210) this.kill(p, "fell");
 		}
 	}
-	kill(p: any) {
+	kill(p: any, cause: DeathCause = "fell") {
 		if (!p.alive) return;
 		p.alive = false;
 		p.deadAt = this.time;
 		p.spin = Math.PI;
 		if (p.id === this.localId) {
+			this.lastDeathCause = cause;
 			this.audio.scream();
 			this.screamOn = true;
 			this.pitY = this.cam.y - 140;
@@ -969,6 +974,7 @@ export class RimeEngine {
 		this.waitingContinue = false;
 		this.continueT = 0;
 		this.screamOn = false;
+		this.lastDeathCause = "fell";
 		this.audio.startFanfare();
 		this.popups.push({
 			x: p.x,
@@ -1023,7 +1029,8 @@ export class RimeEngine {
 			combo: local?.bestCombo ?? 0,
 			winnerId: id,
 			winnerName: name,
-			ranks
+			ranks,
+			deathCause: this.lastDeathCause
 		});
 	}
 	tryPickup(p: any) {
@@ -1402,7 +1409,8 @@ export class RimeEngine {
 			comboYell: p && p.combo >= 2 ? this.comboYell || comboYellOf(p.combo) : "",
 			lastGain: this.lastGain,
 			story: this.attract ? null : this.storyLine,
-			debug: this.debugOn && p ? `vx ${p.vx.toFixed(0)}  vy ${p.vy.toFixed(0)}  ${bandOf(p.vx)}  jump ${jumpImpulse(p.vx).toFixed(0)}  r ${r.toFixed(2)}  scroll ${this.world.scrollSpeed.toFixed(0)}  comboT ${p.comboT.toFixed(1)}` : ""
+			debug: this.debugOn && p ? `vx ${p.vx.toFixed(0)}  vy ${p.vy.toFixed(0)}  ${bandOf(p.vx)}  jump ${jumpImpulse(p.vx).toFixed(0)}  r ${r.toFixed(2)}  scroll ${this.world.scrollSpeed.toFixed(0)}  comboT ${p.comboT.toFixed(1)}` : "",
+			deathCause: !!p && !p.alive ? this.lastDeathCause : null
 		});
 	}
 	snapshot(p: any) {

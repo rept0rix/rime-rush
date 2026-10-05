@@ -415,6 +415,7 @@ export function HubHome() {
           coins={save.coins}
           cost={hud.reviveCost}
           left={hud.continueLeft}
+          cause={hud.deathCause}
           onRevive={() => {
             if (save.coins < hud.reviveCost) return;
             patchSave({ coins: save.coins - hud.reviveCost });

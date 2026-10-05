@@ -152,6 +152,8 @@ export interface Popup {
   scale?: number;
 }
 
+export type DeathCause = "fell" | "rat" | "bat" | "ember" | "raider" | "hazard";
+
 export interface GameResult {
   mode: Mode;
   floor: number;
@@ -160,6 +162,8 @@ export interface GameResult {
   winnerId: string | null;
   winnerName: string;
   ranks: { id: string; name: string; floor: number; score: number; alive: boolean }[];
+  /** What ended the local run — English cause line on the death board. */
+  deathCause?: DeathCause;
 }
 
 export interface LobbyPlayer {

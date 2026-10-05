@@ -1,4 +1,4 @@
-import type { Lang, Mode, PowerId } from "./types";
+import type { DeathCause, Lang, Mode, PowerId } from "./types";
 
 const en = {
   title: "RIME RUSH",
@@ -122,6 +122,12 @@ const en = {
   youClan: "RIME",
   themClan: "EMBER",
   raiders: "raiders",
+  continueAsk: "CONTINUE?",
+  reviveFor: "REVIVE",
+  coinsWord: "coins",
+  needCoins: "NEED",
+  youHave: "you have",
+  playAgain: "PLAY AGAIN",
 };
 
 const he: typeof en = {
@@ -246,6 +252,12 @@ const he: typeof en = {
   youClan: "ריים",
   themClan: "אמבר",
   raiders: "פשיטה",
+  continueAsk: "CONTINUE?",
+  reviveFor: "REVIVE",
+  coinsWord: "coins",
+  needCoins: "NEED",
+  youHave: "you have",
+  playAgain: "PLAY AGAIN",
 };
 
 const dict = { he, en };
@@ -258,6 +270,25 @@ export function t(lang: Lang): Copy {
 
 export function dir(lang: Lang): "rtl" | "ltr" {
   return lang === "he" ? "rtl" : "ltr";
+}
+
+/** English-only short line for what ended the run. */
+export function deathCauseLine(cause: DeathCause | null | undefined): string {
+  switch (cause) {
+    case "rat":
+      return "Taken out by a rat.";
+    case "bat":
+      return "Taken out by a bat.";
+    case "ember":
+      return "Taken out by an ember.";
+    case "raider":
+      return "Taken out by a raider.";
+    case "hazard":
+      return "Taken out by a hazard.";
+    case "fell":
+    default:
+      return "Fell off the tower.";
+  }
 }
 
 export const POWER_NAME: Record<Lang, Record<PowerId, string>> = {
