@@ -6,6 +6,7 @@
 
 ### Security
 - **PATCH:** Fix TanStack Start XSS (GHSA-qx66-fv34-fjm8 / CVE-2026-102989) by bumping `@tanstack/react-start` to `1.168.60` (pulls `@tanstack/start-server-core@1.169.39`) and aligning `@tanstack/react-router` / `@tanstack/router-plugin`.
+- Serve extensionless `/privacy` and `/support` via Nitro proxy to the static HTML pages.
 
 ## [v0.3.7] — 2026-10-01
 
