@@ -178,8 +178,8 @@ export default defineConfig(({ command, isPreview }) => ({
             // Static legal pages live as public/*.html; App Store / support
             // links expect extensionless /privacy and /support.
             routeRules: {
-              "/privacy": { proxy: "/privacy.html" },
-              "/support": { proxy: "/support.html" },
+              "/privacy": { redirect: { to: "/privacy.html", status: 308 } },
+              "/support": { redirect: { to: "/support.html", status: 308 } },
             },
           }),
         ]

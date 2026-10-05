@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "node scripts/with-app-env.mjs vite dev --host 0.0.0.0 --port 8080",
-    "build": "node scripts/with-app-env.mjs vite build && npm run db:migrate && cp node_modules/@electric-sql/pglite/dist/initdb.wasm node_modules/@electric-sql/pglite/dist/pglite.data node_modules/@electric-sql/pglite/dist/pglite.wasm .vercel/output/functions/__server.func/_libs/",
+    "build": "node scripts/with-app-env.mjs vite build && npm run db:migrate && cp node_modules/@electric-sql/pglite/dist/initdb.wasm node_modules/@electric-sql/pglite/dist/pglite.data node_modules/@electric-sql/pglite/dist/pglite.wasm .vercel/output/functions/__server.func/_libs/ && node scripts/patch-legal-routes.mjs",
     "db:migrate": "node scripts/migrate.mjs",
     "build:dev": "node scripts/with-app-env.mjs vite build --mode development",
     "preview": "node scripts/with-app-env.mjs vite preview",
