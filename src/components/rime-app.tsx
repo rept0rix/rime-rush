@@ -135,11 +135,11 @@ function Results() {
   };
 
   return (
-    <div className="absolute inset-0 z-50 flex items-end justify-center pb-[max(20px,env(safe-area-inset-bottom))]">
+    <div className="safe-pb absolute inset-0 z-50 flex items-end justify-center px-2 pt-[max(8px,env(safe-area-inset-top,0px))]">
       {showConnect && <ConnectPrompt onClose={() => setHideConnect(true)} />}
-      <div className="relative w-[92%] max-w-[360px]">
-        <img src="/ui/fell-board.png" alt="" className="w-full object-contain" />
-        <div className="absolute inset-[12%] flex flex-col items-center justify-center">
+      <div className="relative w-[92%] max-w-[360px] max-h-[calc(100%-0.5rem)]">
+        <img src="/ui/fell-board.png" alt="" className="h-auto max-h-[inherit] w-full object-contain" />
+        <div className="absolute inset-[10%] flex flex-col items-center justify-center overflow-hidden pb-1">
           <img src="/ui/you-fell.png" alt="You fell" className="h-12 w-auto object-contain" />
           <p className="mt-1 max-w-[240px] text-center text-xs font-semibold text-ice/90">
             {deathCauseLine(result.deathCause)}

@@ -62,7 +62,7 @@ export function TouchControls({ power, ammo, onMove, onPower, onWeapon }: Props)
         aria="Move right"
         onHold={(d) => holdSide("r", d)}
       />
-      <p className="pointer-events-none absolute bottom-[max(12px,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 rounded-full bg-[#140c08]/55 px-2 py-0.5 text-[10px] font-bold tracking-wide text-gold">
+      <p className="safe-bottom pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 rounded-full bg-[#140c08]/55 px-2.5 py-1 text-[10px] font-bold tracking-wide text-gold">
         {ammo > 0 ? `ATK ${ammo}` : "ATK"}
         {power && power !== "blade" ? " · 2× TAP POWER" : ""}
       </p>

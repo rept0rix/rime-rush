@@ -376,6 +376,18 @@
 }
 
 
+/* Bottom chrome clearance — keeps ATK / ROOM / result CTAs above the home indicator
+   even when env(safe-area-inset-bottom) is 0 (many mobile browsers). */
+.safe-bottom {
+  bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+}
+.safe-pb {
+  padding-bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 16px));
+}
+.safe-hint-bottom {
+  bottom: max(56px, calc(env(safe-area-inset-bottom, 0px) + 44px));
+}
+
 /* Phone cabinet — desktop arcade stage, mobile full-bleed */
 .phone-cabinet {
   position: fixed;

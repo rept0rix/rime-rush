@@ -324,7 +324,7 @@ export function HubHome() {
           type="button"
           aria-label="Room"
           onClick={startRoom}
-          className="absolute right-3 bottom-[max(12px,env(safe-area-inset-bottom))] z-30"
+          className="safe-bottom absolute right-3 z-30"
         >
           <span className="relative block">
             <img src="/ui/room.png" alt="Room" className="h-14 w-auto object-contain drop-shadow-lg" />
