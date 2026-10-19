@@ -171,53 +171,102 @@ function Results() {
   };
 
   return (
-    <div className="absolute inset-0 z-50 flex items-end justify-center pb-[max(20px,env(safe-area-inset-bottom))]">
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md px-4 select-none">
       <div className="pointer-events-auto absolute right-3 top-[max(10px,env(safe-area-inset-top))] z-[60]">
         <MuteButton />
       </div>
       {showConnect && <ConnectPrompt onClose={() => setHideConnect(true)} />}
-      <div className="relative w-[92%] max-w-[360px]">
-        <img src="/ui/fell-board.png" alt="" className="w-full object-contain" />
-        <div className="absolute inset-[12%] flex flex-col items-center justify-center">
-          <img src="/ui/you-fell.png" alt="You fell" className="h-12 w-auto object-contain" />
-          <div className="mt-2 flex items-end gap-6 text-center">
-            <Stat n={result.floor} l={copy.floor} />
-            <Stat n={result.combo} l={copy.combo} />
-            <Stat n={result.score} l={copy.score} />
-          </div>
-          {result.ranks.length > 1 && (
-            <ol className="mt-1 text-[10px] text-fg">
-              {result.ranks.map((r, i) => (
-                <li key={r.id}>
-                  {i + 1}. {r.name} · {r.floor}
-                </li>
-              ))}
-            </ol>
-          )}
-          <div className="mt-3 flex items-center justify-center gap-3">
-            <div className="flex flex-col items-center">
-              <button type="button" className="active:scale-95" onClick={replay}>
-                <img src="/ui/play.png" alt="Play" className="play-hungry h-14 w-auto object-contain" />
-              </button>
-              <p className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-gold">
-                {result.floor >= bestFloor ? "NEW BEST — GO" : `BEAT ${bestFloor}`}
-              </p>
+
+      {/* Main Board Container */}
+      <div className="flex flex-col items-center w-full max-w-[360px]">
+        {/* Top "YOU FELL!" Banner */}
+        <img
+          src="/ui/you-fell.png"
+          alt="You fell!"
+          className="h-14 sm:h-16 w-auto object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)] -mb-3 z-10"
+        />
+
+        {/* The Wooden Board */}
+        <div className="relative w-full">
+          <img
+            src="/ui/fell-board.png"
+            alt=""
+            className="w-full h-auto object-contain drop-shadow-[0_12px_24px_rgba(0,0,0,0.9)]"
+          />
+
+          {/* Inner Blue Content Area */}
+          <div className="absolute inset-x-[12%] top-[18%] bottom-[16%] flex flex-col items-center justify-between py-1 text-center">
+            {/* Header Badge */}
+            {result.floor >= bestFloor && result.floor > 1 ? (
+              <span className="rounded-full bg-gold/25 border border-gold/70 px-3 py-0.5 font-display text-xs tracking-wider text-gold shadow-[0_0_8px_rgba(255,211,106,0.6)] animate-pulse">
+                ★ NEW BEST RECORD ★
+              </span>
+            ) : (
+              <span className="font-display text-xs tracking-wider text-ice/90 uppercase">
+                Run Summary
+              </span>
+            )}
+
+            {/* 3 Stats Grid */}
+            <div className="grid grid-cols-3 gap-1.5 w-full">
+              <div className="flex flex-col items-center justify-center rounded-lg bg-[#071322]/70 border border-ice/20 py-1 px-0.5">
+                <p className="font-display text-3xl sm:text-4xl leading-none text-gold drop-shadow">
+                  {result.floor}
+                </p>
+                <p className="text-[9px] font-bold tracking-widest uppercase text-ice/80 mt-0.5">
+                  {copy.floor}
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center justify-center rounded-lg bg-[#071322]/70 border border-ice/20 py-1 px-0.5">
+                <p className="font-display text-3xl sm:text-4xl leading-none text-mint drop-shadow">
+                  {result.combo}
+                </p>
+                <p className="text-[9px] font-bold tracking-widest uppercase text-mint/80 mt-0.5">
+                  {copy.combo}
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center justify-center rounded-lg bg-[#071322]/70 border border-ice/20 py-1 px-0.5 min-w-0">
+                <p className="font-display text-2xl sm:text-3xl leading-none text-gold drop-shadow truncate w-full">
+                  {result.score.toLocaleString()}
+                </p>
+                <p className="text-[9px] font-bold tracking-widest uppercase text-ice/80 mt-0.5">
+                  {copy.score}
+                </p>
+              </div>
             </div>
-            <button type="button" className="active:scale-95" onClick={goHome}>
-              <img src="/ui/home.png" alt="Home" className="h-12 w-auto object-contain" />
-            </button>
+
+            {/* Best Floor Comparison */}
+            <div className="flex items-center justify-between w-full px-2 text-[10px] font-bold text-muted/90">
+              <span>BEST: <span className="text-gold font-display text-sm">{Math.max(result.floor, bestFloor)}</span></span>
+              <span>COINS: <span className="text-gold font-display text-sm">+{Math.max(10, Math.floor(result.score / 100))}</span></span>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
 
-function Stat({ n, l }: { n: number; l: string }) {
-  return (
-    <div>
-      <p className="font-display text-4xl leading-none text-gold drop-shadow">{n}</p>
-      <p className="text-[10px] uppercase tracking-widest text-muted">{l}</p>
+        {/* Bottom Buttons Area - Cleanly Below Icicles */}
+        <div className="mt-2 flex items-center justify-center gap-4">
+          <button
+            type="button"
+            className="active:scale-95 transition-transform"
+            onClick={replay}
+          >
+            <img src="/ui/play.png" alt="Play Again" className="h-14 w-auto object-contain drop-shadow-lg" />
+          </button>
+          <button
+            type="button"
+            className="active:scale-95 transition-transform"
+            onClick={goHome}
+          >
+            <img src="/ui/home.png" alt="Home" className="h-12 w-auto object-contain drop-shadow-lg" />
+          </button>
+        </div>
+
+        <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted/80">
+          {result.floor >= bestFloor ? "NEW RECORD — TAP PLAY TO CLIMB HIGHER" : `BEAT FLOOR ${bestFloor} — GO AGAIN`}
+        </p>
+      </div>
     </div>
   );
 }
