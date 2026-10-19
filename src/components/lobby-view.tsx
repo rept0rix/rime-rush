@@ -8,7 +8,7 @@ import { botName } from "@/game/bots";
 import { outfitAccent } from "@/game/outfits";
 import { SKINS } from "@/game/sprites";
 import { displayName, useGame } from "@/game/store";
-import { addFriend, getDashboard, inviteFriend, type PresenceRow } from "@/lib/rime-data";
+import { addFriend, getDashboard, inviteFriend, heartbeatRoom, closeRoom, listPublicRooms, findOrCreatePublicRoom, type PresenceRow, type PublicRoomRow } from "@/lib/rime-data";
 import { useP2PRoom } from "@/lib/multiplayer";
 import type { BotSeed, LobbyPlayer, Mode, NetMsg } from "@/game/types";
 import { clientId } from "@/lib/client-id";
@@ -105,6 +105,41 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
       clearTimeout(tmr);
     };
   }, [p2p.onMessage, p2p.send, p2p.selfId, host, name, save.color, mpMode, fillBots]);
+
+  const [publicRooms, setPublicRooms] = useState<PublicRoomRow[]>([]);
+
+  useEffect(() => {
+    const fetchRooms = () => {
+      void listPublicRooms()
+        .then((rooms) => setPublicRooms(rooms.filter((r) => r.room !== code)))
+        .catch(() => {});
+    };
+    fetchRooms();
+    const t = window.setInterval(fetchRooms, 5000);
+    return () => window.clearInterval(t);
+  }, [code]);
+
+  useEffect(() => {
+    if (!host) return;
+    const beat = () => {
+      void heartbeatRoom({
+        data: {
+          room: code,
+          hostId: clientId(),
+          hostName: name,
+          mode: mpMode,
+          playersCount: 1 + p2p.peers.length,
+          status: started ? "playing" : "waiting",
+        },
+      });
+    };
+    beat();
+    const t = window.setInterval(beat, 6000);
+    return () => {
+      window.clearInterval(t);
+      void closeRoom({ data: { room: code } });
+    };
+  }, [host, code, name, mpMode, p2p.peers.length, started]);
 
   useEffect(() => {
     if (host) publishLobby(p2p, save.color, save.outfit, name, mpMode, fillBots, p2p.selfId);
@@ -211,22 +246,63 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
       {host && <p className="text-center text-[11px] font-bold text-gold">YOU HOST</p>}
       {!p2p.joined && <p className="text-center text-xs text-muted">Connecting…</p>}
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          onClick={async () => {
+            const res = await findOrCreatePublicRoom({
+              data: { clientId: clientId(), name, mode: mpMode },
+            });
+            if (res.room && res.room !== code) {
+              useGame.getState().setRoom(res.room);
+              useGame.getState().setJoining(!res.isHost);
+            }
+          }}
+          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] font-display text-xs text-gold active:scale-95"
+        >
+          QUICK MATCH
+        </button>
         <button
           type="button"
           onClick={() => void share()}
-          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] font-display text-xl text-gold"
+          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] font-display text-xs text-ice active:scale-95"
         >
           INVITE
         </button>
         <button
           type="button"
           onClick={() => void copyLink()}
-          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] text-sm font-bold text-ice"
+          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] text-xs font-bold text-ice active:scale-95"
         >
-          {copied === "link" ? "COPIED" : "COPY LINK"}
+          {copied === "link" ? "COPIED" : "COPY"}
         </button>
       </div>
+
+      {publicRooms.length > 0 && (
+        <div className="mt-3">
+          <p className="font-display text-lg text-gold">Open Public Games</p>
+          <div className="mt-1 space-y-1.5">
+            {publicRooms.map((r) => (
+              <div key={r.room} className="flex items-center justify-between rounded-xl border border-line bg-[#140c08]/90 px-3 py-1.5">
+                <div>
+                  <p className="text-xs font-bold text-ice">Room {r.room} ({r.mode})</p>
+                  <p className="text-[10px] text-muted">{r.hostName} · {r.playersCount}/{r.maxPlayers} players</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    useGame.getState().setRoom(r.room);
+                    useGame.getState().setJoining(true);
+                  }}
+                  className="rounded-lg bg-ice px-2.5 py-1 font-display text-xs text-bg transition hover:brightness-110 active:scale-95"
+                >
+                  JOIN
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <p className="mt-4 font-display text-xl text-gold">Squad</p>
       <div className="mt-1 grid grid-cols-2 gap-2">

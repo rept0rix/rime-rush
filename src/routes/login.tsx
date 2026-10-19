@@ -6,8 +6,8 @@ export const Route = createFileRoute("/login")({ component: Login });
 
 function Login() {
   return (
-    <main className="relative grid min-h-dvh place-items-center overflow-hidden bg-bg px-5 text-fg">
-      <div className="relative w-full max-w-sm space-y-4 rounded-3xl border border-line bg-surface/95 p-6">
+    <main className="relative grid min-h-dvh h-dvh overflow-y-auto place-items-center bg-bg px-5 py-8 text-fg">
+      <div className="relative w-full max-w-sm space-y-4 rounded-3xl border border-line bg-surface/95 p-6 my-auto">
         <p className="arcade-title text-center font-display text-5xl text-ice">RIME</p>
         <p className="arcade-title -mt-3 text-center font-display text-4xl text-gold">RUSH</p>
         <p className="text-center text-sm text-muted">

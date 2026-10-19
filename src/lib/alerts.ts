@@ -1,4 +1,12 @@
 export async function requestAlerts(): Promise<boolean> {
+  if (typeof window !== "undefined" && (window as any).webkit?.messageHandlers?.notifications) {
+    try {
+      (window as any).webkit.messageHandlers.notifications.postMessage({ action: "request" });
+      return true;
+    } catch {
+      return false;
+    }
+  }
   if (typeof Notification === "undefined") return false;
   if (Notification.permission === "granted") return true;
   if (Notification.permission === "denied") return false;
@@ -11,6 +19,18 @@ export async function requestAlerts(): Promise<boolean> {
 }
 
 export function pushAlert(title: string, body: string): void {
+  if (typeof window !== "undefined" && (window as any).webkit?.messageHandlers?.notifications) {
+    try {
+      (window as any).webkit.messageHandlers.notifications.postMessage({
+        action: "push",
+        title,
+        body,
+      });
+      return;
+    } catch {
+      /* ignore */
+    }
+  }
   if (typeof Notification === "undefined") return;
   if (Notification.permission !== "granted") return;
   if (typeof document !== "undefined" && !document.hidden) return;

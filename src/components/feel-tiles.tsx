@@ -82,10 +82,6 @@ export function PlaqueBtn({
     <button
       type="button"
       data-testid={testId}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        onFire();
-      }}
       onClick={onFire}
       className="relative active:scale-95"
       style={{ touchAction: "manipulation" }}

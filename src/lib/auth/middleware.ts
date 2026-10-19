@@ -27,21 +27,33 @@ import { createMiddleware } from "@tanstack/react-start";
  */
 export const authMiddleware = createMiddleware({ type: "function" })
   .client(async ({ next }) => {
-    // Live preview (partitioned iframe): the session rides a bearer token, not a
-    // cookie, so forward it to the server. Null when deployed (cookie auth), so
-    // this is a no-op there.
     const { getBearerToken } = await import("./client");
     return next({ sendContext: { bearerToken: getBearerToken() ?? undefined } });
   })
   .server(async ({ next, context }) => {
-    // ONLY import `*.server` modules here. This file is dual client/server
-    // (bearer hook on the client). A plain `./isolation` path was renamed to
-    // `isolation.server.ts` — keep this import in sync so image `tsc` resolves
-    // it, and so Vite does not ship `@tanstack/react-start/server` to the browser.
     const { assertSameSiteRequest } = await import("./isolation.server");
     const { requireUserId } = await import("./verify.server");
-    // Reject scripted cross-site/sibling requests before touching per-user data.
     assertSameSiteRequest();
     const userId = await requireUserId(context.bearerToken);
     return next({ context: { userId } });
   });
+
+export const optionalAuthMiddleware = createMiddleware({ type: "function" })
+  .client(async ({ next }) => {
+    const { getBearerToken } = await import("./client");
+    return next({ sendContext: { bearerToken: getBearerToken() ?? undefined } });
+  })
+  .server(async ({ next, context }) => {
+    const { assertSameSiteRequest } = await import("./isolation.server");
+    const { getSessionUser } = await import("./verify.server");
+    assertSameSiteRequest();
+    let userId: string | null = null;
+    try {
+      const u = await getSessionUser(context.bearerToken);
+      userId = u?.id ?? null;
+    } catch {
+      userId = null;
+    }
+    return next({ context: { userId } });
+  });
+

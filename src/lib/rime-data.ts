@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { authMiddleware, optionalAuthMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import type { PresenceStatus } from "@/game/types";
 
@@ -666,3 +666,355 @@ export const purgeMyAccount = createServerFn({ method: "POST" })
     await sql`delete from rime_notes where to_id = ${id} or from_id = ${id}`;
     return { ok: true as const };
   });
+
+export type SyncProfileInput = {
+  clientId: string;
+  name?: string;
+  color?: number;
+  outfit?: number;
+  weapon?: string;
+  coins?: number;
+  bestFloor?: number;
+  bestScore?: number;
+  bestCombo?: number;
+  games?: number;
+  badges?: string[];
+  ownedSkins?: number[];
+  ownedWeapons?: string[];
+};
+
+export type MergedProfileResult = {
+  name: string;
+  color: number;
+  outfit: number;
+  weapon: string;
+  coins: number;
+  bestFloor: number;
+  bestScore: number;
+  bestCombo: number;
+  games: number;
+  badges: string[];
+  ownedSkins: number[];
+  ownedWeapons: string[];
+  authenticated: boolean;
+};
+
+export const syncProfile = createServerFn({ method: "POST" })
+  .middleware([optionalAuthMiddleware])
+  .validator((d: SyncProfileInput) => d)
+  .handler(async ({ context, data }): Promise<MergedProfileResult> => {
+    const sql = await getSql();
+    const isAuth = Boolean(context.userId);
+    const targetUserId = context.userId || cleanId(data.clientId);
+    const guestCid = cleanId(data.clientId);
+
+    // If authenticated, migrate any anonymous scores/presence recorded under clientId
+    if (isAuth && targetUserId !== guestCid) {
+      try {
+        await sql`update rime_scores set user_id = ${targetUserId} where user_id = ${guestCid}`;
+        await sql`update rime_presence set user_id = ${targetUserId} where client_id = ${guestCid}`;
+        await sql`update rime_events set user_id = ${targetUserId} where client_id = ${guestCid}`;
+        await sql`update rime_friends set owner_id = ${targetUserId} where owner_id = ${guestCid}`;
+        await sql`update rime_notes set to_id = ${targetUserId} where to_id = ${guestCid}`;
+      } catch {
+        /* ignore migration errors */
+      }
+    }
+
+    // Read existing cloud profile
+    let existingRow: {
+      name: string;
+      color: number;
+      outfit: number;
+      weapon: string;
+      coins: number;
+      best_floor: number;
+      best_score: number;
+      best_combo: number;
+      games: number;
+      badges: string;
+      owned_skins: string;
+      owned_weapons: string;
+    } | null = null;
+
+    try {
+      const rows = await sql<{
+        name: string;
+        color: number;
+        outfit: number;
+        weapon: string;
+        coins: number;
+        best_floor: number;
+        best_score: number;
+        best_combo: number;
+        games: number;
+        badges: string;
+        owned_skins: string;
+        owned_weapons: string;
+      }>`
+        select name, color, coalesce(outfit, 0) as outfit, coalesce(weapon, 'blade') as weapon,
+               coalesce(coins, 0) as coins, best_floor, best_score, best_combo, games,
+               badges, coalesce(owned_skins, '[0,1,2]') as owned_skins,
+               coalesce(owned_weapons, '["blade"]') as owned_weapons
+        from rime_profiles where user_id = ${targetUserId}
+      `;
+      existingRow = rows[0] ?? null;
+    } catch {
+      /* table might be updating */
+    }
+
+    const parseJson = <T>(val: unknown, fallback: T): T => {
+      if (!val) return fallback;
+      try {
+        return (typeof val === "string" ? JSON.parse(val) : val) as T;
+      } catch {
+        return fallback;
+      }
+    };
+
+    const exBadges: string[] = parseJson(existingRow?.badges, []);
+    const exSkins: number[] = parseJson(existingRow?.owned_skins, [0, 1, 2]);
+    const exWeapons: string[] = parseJson(existingRow?.owned_weapons, ["blade"]);
+
+    const bestFloor = Math.max(existingRow?.best_floor ?? 0, data.bestFloor ?? 0);
+    const bestScore = Math.max(existingRow?.best_score ?? 0, data.bestScore ?? 0);
+    const bestCombo = Math.max(existingRow?.best_combo ?? 0, data.bestCombo ?? 0);
+    const games = Math.max(existingRow?.games ?? 0, data.games ?? 0);
+    const coins = Math.max(existingRow?.coins ?? 0, data.coins ?? 0);
+    const name = data.name?.trim() || existingRow?.name || "Climber";
+    const color = data.color !== undefined ? data.color : existingRow?.color ?? 0;
+    const outfit = data.outfit !== undefined ? data.outfit : existingRow?.outfit ?? 0;
+    const weapon = data.weapon || existingRow?.weapon || "blade";
+
+    const badges = Array.from(new Set([...exBadges, ...(data.badges ?? [])])).slice(0, 32);
+    const ownedSkins = Array.from(new Set([...exSkins, ...(data.ownedSkins ?? [0])])).sort((a, b) => a - b);
+    const ownedWeapons = Array.from(new Set([...exWeapons, ...(data.ownedWeapons ?? ["blade"])]));
+
+    try {
+      await sql`
+        insert into rime_profiles (
+          user_id, name, color, outfit, weapon, coins,
+          best_floor, best_score, best_combo, games,
+          badges, owned_skins, owned_weapons, updated_at
+        )
+        values (
+          ${targetUserId}, ${cleanName(name)}, ${color}, ${outfit}, ${weapon}, ${coins},
+          ${bestFloor}, ${bestScore}, ${bestCombo}, ${games},
+          ${JSON.stringify(badges)}, ${JSON.stringify(ownedSkins)}, ${JSON.stringify(ownedWeapons)}, now()
+        )
+        on conflict (user_id) do update set
+          name = excluded.name,
+          color = excluded.color,
+          outfit = excluded.outfit,
+          weapon = excluded.weapon,
+          coins = greatest(rime_profiles.coins, excluded.coins),
+          best_floor = greatest(rime_profiles.best_floor, excluded.best_floor),
+          best_score = greatest(rime_profiles.best_score, excluded.best_score),
+          best_combo = greatest(rime_profiles.best_combo, excluded.best_combo),
+          games = greatest(rime_profiles.games, excluded.games),
+          badges = excluded.badges,
+          owned_skins = excluded.owned_skins,
+          owned_weapons = excluded.owned_weapons,
+          updated_at = now()
+      `;
+    } catch {
+      /* ignore */
+    }
+
+    return {
+      name,
+      color,
+      outfit,
+      weapon,
+      coins,
+      bestFloor,
+      bestScore,
+      bestCombo,
+      games,
+      badges,
+      ownedSkins,
+      ownedWeapons,
+      authenticated: isAuth,
+    };
+  });
+
+export type PublicRoomRow = {
+  room: string;
+  hostName: string;
+  mode: string;
+  playersCount: number;
+  maxPlayers: number;
+  status: string;
+};
+
+export const listPublicRooms = createServerFn({ method: "GET" }).handler(async (): Promise<PublicRoomRow[]> => {
+  try {
+    const sql = await getSql();
+    const rows = await sql<{
+      room: string;
+      host_name: string;
+      mode: string;
+      players_count: number;
+      max_players: number;
+      status: string;
+    }>`
+      select room, host_name, mode, players_count, max_players, status
+      from rime_rooms
+      where is_public = true and status = 'waiting' and updated_at > now() - interval '25 seconds'
+      order by updated_at desc
+      limit 10
+    `;
+    return rows.map((r) => ({
+      room: r.room,
+      hostName: r.host_name,
+      mode: r.mode,
+      playersCount: r.players_count,
+      maxPlayers: r.max_players,
+      status: r.status,
+    }));
+  } catch {
+    return [];
+  }
+});
+
+export const heartbeatRoom = createServerFn({ method: "POST" })
+  .validator(
+    (d: {
+      room: string;
+      hostId: string;
+      hostName: string;
+      mode: string;
+      playersCount: number;
+      status?: "waiting" | "playing" | "closed";
+    }) => d,
+  )
+  .handler(async ({ data }) => {
+    try {
+      const sql = await getSql();
+      const room = cleanRoom(data.room);
+      const hostId = cleanId(data.hostId);
+      const hostName = cleanName(data.hostName);
+      const mode = data.mode.slice(0, 16);
+      const count = Math.max(1, Math.min(4, Math.floor(data.playersCount)));
+      const status = data.status || "waiting";
+
+      if (status === "closed") {
+        await sql`delete from rime_rooms where room = ${room}`;
+        return { ok: true };
+      }
+
+      await sql`
+        insert into rime_rooms (room, host_id, host_name, mode, players_count, max_players, is_public, status, updated_at)
+        values (${room}, ${hostId}, ${hostName}, ${mode}, ${count}, 4, true, ${status}, now())
+        on conflict (room) do update set
+          players_count = excluded.players_count,
+          status = excluded.status,
+          updated_at = now()
+      `;
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  });
+
+export const closeRoom = createServerFn({ method: "POST" })
+  .validator((d: { room: string }) => d)
+  .handler(async ({ data }) => {
+    try {
+      const sql = await getSql();
+      await sql`delete from rime_rooms where room = ${cleanRoom(data.room)}`;
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  });
+
+export const findOrCreatePublicRoom = createServerFn({ method: "POST" })
+  .validator((d: { clientId: string; name: string; mode?: string }) => d)
+  .handler(async ({ data }): Promise<{ room: string; isHost: boolean }> => {
+    try {
+      const sql = await getSql();
+      // Look for an existing open room with space
+      const open = await sql<{ room: string; players_count: number }>`
+        select room, players_count from rime_rooms
+        where is_public = true and status = 'waiting' and players_count < 4
+          and updated_at > now() - interval '20 seconds'
+        order by players_count desc, updated_at desc
+        limit 1
+      `;
+      if (open.length > 0 && open[0]?.room) {
+        return { room: open[0].room, isHost: false };
+      }
+    } catch {
+      /* ignore */
+    }
+
+    // Generate random 4-letter room code
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 4; i++) code += chars[(Math.random() * chars.length) | 0];
+
+    try {
+      const sql = await getSql();
+      await sql`
+        insert into rime_rooms (room, host_id, host_name, mode, players_count, max_players, is_public, status, updated_at)
+        values (${code}, ${cleanId(data.clientId)}, ${cleanName(data.name)}, ${data.mode || "laststand"}, 1, 4, true, 'waiting', now())
+        on conflict (room) do update set updated_at = now()
+      `;
+    } catch {
+      /* ignore */
+    }
+    return { room: code, isHost: true };
+  });
+
+/**
+ * Client-callable helper to synchronize device local save with the cloud profile.
+ */
+export async function syncLocalSaveWithCloud(): Promise<MergedProfileResult | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const { clientId } = await import("@/lib/client-id");
+    const { useGame } = await import("@/game/store");
+    const currentSave = useGame.getState().save;
+
+    const res = await syncProfile({
+      data: {
+        clientId: clientId(),
+        name: currentSave.name,
+        color: currentSave.color,
+        outfit: currentSave.outfit,
+        weapon: currentSave.weapon,
+        coins: currentSave.coins,
+        bestFloor: currentSave.bestFloor,
+        bestScore: currentSave.bestScore,
+        bestCombo: currentSave.bestCombo,
+        games: currentSave.games,
+        badges: currentSave.badges,
+        ownedSkins: currentSave.ownedSkins,
+        ownedWeapons: currentSave.ownedWeapons,
+      },
+    });
+
+    if (res) {
+      useGame.getState().patchSave({
+        name: res.name,
+        color: res.color,
+        outfit: res.outfit,
+        weapon: res.weapon as any,
+        coins: Math.max(currentSave.coins, res.coins),
+        bestFloor: Math.max(currentSave.bestFloor, res.bestFloor),
+        bestScore: Math.max(currentSave.bestScore, res.bestScore),
+        bestCombo: Math.max(currentSave.bestCombo, res.bestCombo),
+        games: Math.max(currentSave.games, res.games),
+        badges: res.badges,
+        ownedSkins: res.ownedSkins,
+        ownedWeapons: res.ownedWeapons as any,
+      });
+    }
+    return res;
+  } catch (err) {
+    console.warn("[cloud-sync] sync failed:", err);
+    return null;
+  }
+}
+

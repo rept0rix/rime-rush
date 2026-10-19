@@ -9,7 +9,7 @@
  * rolls back and accepts, so pairs converge without wedging.
  */
 
-export type SignalKind = "offer" | "answer" | "ice";
+export type SignalKind = "offer" | "answer" | "ice" | "msg";
 
 /**
  * Wire contract between this client and the signaling relay the app provides
@@ -106,9 +106,24 @@ export class P2PRoom {
   private closed = false;
   private everPolled = false;
   private lastPeersFingerprint = "";
+  private localBc: BroadcastChannel | null = null;
+  private lastRelayBroadcast = 0;
 
   constructor(opts: P2PRoomOptions) {
     this.opts = opts;
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        this.localBc = new BroadcastChannel(`rime-p2p-${opts.room}`);
+        this.localBc.onmessage = (e) => {
+          const { from, data, channel, peerId } = e.data || {};
+          if (from && from !== opts.selfId && (!peerId || peerId === opts.selfId)) {
+            opts.onMessage?.(from, data, channel || "reliable");
+          }
+        };
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   /**
@@ -134,6 +149,14 @@ export class P2PRoom {
     this.closed = true;
     if (this.pollTimer) clearTimeout(this.pollTimer);
     if (this.pingTimer) clearInterval(this.pingTimer);
+    if (this.localBc) {
+      try {
+        this.localBc.close();
+      } catch {
+        /* ignore */
+      }
+      this.localBc = null;
+    }
     for (const slot of this.peers.values()) slot.pc.close();
     this.peers.clear();
     // Leaving the roster is the teardown broadcast: everyone's next poll
@@ -146,11 +169,28 @@ export class P2PRoom {
     }).catch(() => {});
   }
 
-  /** Send on the unreliable game-state channel (drops stale packets). */
+  /** Send on the game-state channel (WebRTC if open, local BroadcastChannel, and periodic relay). */
   broadcast(data: unknown): void {
     const wire = JSON.stringify({ t: "d", d: data });
+    let anyOpen = false;
     for (const slot of this.peers.values()) {
-      if (slot.state?.readyState === "open") slot.state.send(wire);
+      if (slot.state?.readyState === "open") {
+        slot.state.send(wire);
+        anyOpen = true;
+      }
+    }
+    try {
+      this.localBc?.postMessage({ from: this.opts.selfId, data, channel: "state" });
+    } catch {
+      /* ignore */
+    }
+    // If WebRTC is not yet open to all peers and peers exist in roster, relay over signaling
+    if (!anyOpen && this.peers.size > 0) {
+      const now = performance.now();
+      if (now - this.lastRelayBroadcast > 220) {
+        this.lastRelayBroadcast = now;
+        void this.sendSignal("*", "msg", { channel: "state", data });
+      }
     }
   }
 
@@ -158,8 +198,21 @@ export class P2PRoom {
   send(data: unknown, peerId?: string): void {
     const wire = JSON.stringify({ t: "d", d: data });
     const targets = peerId ? [this.peers.get(peerId)] : [...this.peers.values()];
+    let anyOpen = false;
     for (const slot of targets) {
-      if (slot?.reliable?.readyState === "open") slot.reliable.send(wire);
+      if (slot?.reliable?.readyState === "open") {
+        slot.reliable.send(wire);
+        anyOpen = true;
+      }
+    }
+    try {
+      this.localBc?.postMessage({ from: this.opts.selfId, data, channel: "reliable", peerId });
+    } catch {
+      /* ignore */
+    }
+    // Fallback to signaling relay if WebRTC channel is not connected
+    if (!anyOpen) {
+      void this.sendSignal(peerId ?? "*", "msg", { channel: "reliable", data });
     }
   }
 
@@ -365,6 +418,13 @@ export class P2PRoom {
     roster: Set<string>,
   ): Promise<void> {
     if (this.closed) return;
+    if (kind === "msg") {
+      const envelope = payload as { channel?: "state" | "reliable"; data?: unknown } | undefined;
+      if (envelope && envelope.data !== undefined) {
+        this.opts.onMessage?.(from, envelope.data, envelope.channel || "reliable");
+      }
+      return;
+    }
     let slot = this.peers.get(from);
     if (!slot) {
       // New peers dial us in the same poll that adds them to the roster.

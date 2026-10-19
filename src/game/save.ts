@@ -35,7 +35,7 @@ function baseDefaults(): SaveData {
     badges: [],
     weapon: "blade",
     coins: 0,
-    ownedSkins: Array.from({ length: 12 }, (_, i) => i),
+    ownedSkins: [0, 1, 2],
     ownedWeapons: ["blade"],
     seenBoard: false,
     authProvider: "",
@@ -49,17 +49,18 @@ function migrate(raw: SaveData): SaveData {
   const prevVersion = typeof raw.version === "number" ? raw.version : 0;
   // English-only UI: always coerce saved lang to "en".
   const lang = cleanLang(raw.lang);
+  const rawSkins = Array.isArray(raw.ownedSkins) && raw.ownedSkins.length ? raw.ownedSkins : [0, 1, 2];
   const merged: SaveData = {
     ...baseDefaults(),
     ...raw,
     version: SAVE_VERSION,
     lang,
     badges: raw.badges ?? [],
-    ownedSkins: raw.ownedSkins?.length ? raw.ownedSkins : [0],
+    ownedSkins: Array.from(new Set([0, 1, 2, ...rawSkins])).sort((a, b) => a - b),
     ownedWeapons: raw.ownedWeapons?.length ? raw.ownedWeapons : ["blade"],
     coins: raw.coins ?? 0,
     seenBoard: !!raw.seenBoard,
-    authProvider: raw.authProvider === "google" || raw.authProvider === "x" ? raw.authProvider : "",
+    authProvider: raw.authProvider === "google" || raw.authProvider === "x" || raw.authProvider === "email" ? raw.authProvider : "",
     status: cleanStatus((raw as SaveData).status),
     alerts: raw.alerts !== false,
   };
@@ -71,8 +72,6 @@ function migrate(raw: SaveData): SaveData {
       : 3;
   }
   if (!merged.weapon) merged.weapon = "blade";
-  // Unlock full 12-climber roster for clear differentiation.
-  merged.ownedSkins = Array.from({ length: 12 }, (_, i) => i);
   if (merged.color < 0 || merged.color > 11) merged.color = 0;
   const rawOutfit = (raw as { outfit?: unknown }).outfit;
   merged.outfit = typeof rawOutfit === "number" && rawOutfit >= 0 && rawOutfit <= 2 ? Math.floor(rawOutfit) : 0;
@@ -116,8 +115,8 @@ export function clearSave(): SaveData {
   return next;
 }
 
-export function recordRun(floor: number, score: number, combo: number): SaveData {
-  const s = loadSave();
+export function recordRun(floor: number, score: number, combo: number, current?: SaveData): SaveData {
+  const s = current ? { ...current } : loadSave();
   s.games += 1;
   s.lastFloor = floor;
   s.bestFloor = Math.max(s.bestFloor, floor);

@@ -1,0 +1,50 @@
+name: RimeRush
+options:
+  bundleIdPrefix: com.rept0rix
+  deploymentTarget:
+    iOS: "16.0"
+  generateEmptyDirectories: true
+settings:
+  base:
+    PRODUCT_NAME: RimeRush
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: "1.0.0"
+    CODE_SIGN_STYLE: Automatic
+targets:
+  RimeRush:
+    type: application
+    platform: iOS
+    sources:
+      - path: RimeRush
+        excludes:
+          - "Info.plist"
+    info:
+      path: RimeRush/Info.plist
+      properties:
+        CFBundleDisplayName: "RIME RUSH"
+        ITSAppUsesNonExemptEncryption: false
+        LSRequiresIPhoneOS: true
+        UILaunchStoryboardName: "LaunchScreen"
+        UIRequiresFullScreen: true
+        UIStatusBarHidden: false
+        UIStatusBarStyle: "UIStatusBarStyleLightContent"
+        UIViewControllerBasedStatusBarAppearance: true
+        UISupportedInterfaceOrientations:
+          - "UIInterfaceOrientationPortrait"
+        UISupportedInterfaceOrientations~ipad:
+          - "UIInterfaceOrientationPortrait"
+          - "UIInterfaceOrientationPortraitUpsideDown"
+          - "UIInterfaceOrientationLandscapeLeft"
+          - "UIInterfaceOrientationLandscapeRight"
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rept0rix.rimerush
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"

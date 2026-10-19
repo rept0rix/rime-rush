@@ -98,7 +98,7 @@ function drawBackdrop(
     ctx.font = "800 11px Bangers, Teko, sans-serif";
     ctx.textAlign = "center";
     ctx.fillStyle = "rgba(255,211,106,0.35)";
-    ctx.fillText(WORLD_TITLE[stage], viewW / 2, 28);
+    ctx.fillText(WORLD_TITLE[stage], viewW / 2, 86);
   }
 }
 
@@ -136,40 +136,40 @@ function getBackdrop(stage: ArcadeWorld, camY: number, w: number, h: number, now
   return c;
 }
 
-function drawWalls(
-  ctx: CanvasRenderingContext2D,
-  cam: Cam,
-  viewH: number,
-  now: number,
-  stage: ArcadeWorld,
-): void {
+const wallCache = new Map<ArcadeWorld, { left: HTMLCanvasElement; right: HTMLCanvasElement }>();
+
+function getWallTile(stage: ArcadeWorld): { left: HTMLCanvasElement; right: HTMLCanvasElement } {
+  let cached = wallCache.get(stage);
+  if (cached) return cached;
   const pal = WALL_PALETTE[stage];
-  const top = cam.y + viewH + 50;
-  const bot = cam.y - 50;
-  const brickH = 36;
   const vis = 38;
-  for (const side of [0, BASE_W - vis] as const) {
-    const inner = side === 0;
-    ctx.fillStyle = pal.c;
-    ctx.fillRect(side, 0, vis, viewH);
-    for (let y = Math.floor(bot / brickH) * brickH; y < top; y += brickH) {
-      const sy = worldToScreen(y, cam, viewH);
-      const odd = Math.floor(y / brickH) % 2;
-      ctx.fillStyle = odd ? pal.a : pal.b;
-      ctx.fillRect(side + 1, sy - brickH + 1, vis - 2, brickH - 2);
-      ctx.fillStyle = pal.c;
-      ctx.fillRect(side + 1, sy - 2, vis - 2, 2);
-      ctx.fillStyle = "rgba(255,255,255,0.07)";
-      ctx.fillRect(inner ? side + 4 : side + vis - 10, sy - brickH + 3, 6, 3);
-      const row = Math.floor(y / brickH);
+  const tileH = 288; // 8 * 36px bricks
+  const brickH = 36;
+
+  const makeTile = (inner: boolean) => {
+    const c = document.createElement("canvas");
+    c.width = vis;
+    c.height = tileH;
+    const g = c.getContext("2d")!;
+    g.fillStyle = pal.c;
+    g.fillRect(0, 0, vis, tileH);
+    for (let row = 0; row < 8; row++) {
+      const odd = row % 2;
+      const y = row * brickH;
+      g.fillStyle = odd ? pal.a : pal.b;
+      g.fillRect(1, y + 1, vis - 2, brickH - 2);
+      g.fillStyle = pal.c;
+      g.fillRect(1, y + brickH - 2, vis - 2, 2);
+      g.fillStyle = "rgba(255,255,255,0.07)";
+      g.fillRect(inner ? 4 : vis - 10, y + 3, 6, 3);
       if (row % 4 === 0) {
-        ctx.fillStyle = pal.moss;
-        ctx.globalAlpha = 0.45;
-        ctx.fillRect(side + (inner ? vis - 12 : 2), sy - brickH + 6, 10, 12);
-        ctx.globalAlpha = 1;
+        g.fillStyle = pal.moss;
+        g.globalAlpha = 0.45;
+        g.fillRect(inner ? vis - 12 : 2, y + 6, 10, 12);
+        g.globalAlpha = 1;
       }
     }
-    const shade = ctx.createLinearGradient(side, 0, side + vis, 0);
+    const shade = g.createLinearGradient(0, 0, vis, 0);
     if (inner) {
       shade.addColorStop(0, "rgba(0,0,0,0.15)");
       shade.addColorStop(1, "rgba(0,0,0,0.55)");
@@ -177,9 +177,36 @@ function drawWalls(
       shade.addColorStop(0, "rgba(0,0,0,0.55)");
       shade.addColorStop(1, "rgba(0,0,0,0.15)");
     }
-    ctx.fillStyle = shade;
-    ctx.fillRect(side, 0, vis, viewH);
+    g.fillStyle = shade;
+    g.fillRect(0, 0, vis, tileH);
+    return c;
+  };
+
+  cached = { left: makeTile(true), right: makeTile(false) };
+  wallCache.set(stage, cached);
+  return cached;
+}
+
+function drawWalls(
+  ctx: CanvasRenderingContext2D,
+  cam: Cam,
+  viewH: number,
+  now: number,
+  stage: ArcadeWorld,
+): void {
+  const vis = 38;
+  const tileH = 288;
+  const tiles = getWallTile(stage);
+
+  // Compute screen Y aligned with cam.y scrolling
+  const offset = ((cam.y % tileH) + tileH) % tileH;
+  const startY = offset - tileH;
+
+  for (let sy = startY; sy < viewH + tileH; sy += tileH) {
+    ctx.drawImage(tiles.left, 0, sy);
+    ctx.drawImage(tiles.right, BASE_W - vis, sy);
   }
+
   ctx.fillStyle = "rgba(0,0,0,0.45)";
   ctx.fillRect(vis - 2, 0, 6, viewH);
   ctx.fillRect(BASE_W - vis - 4, 0, 6, viewH);
@@ -213,11 +240,7 @@ function drawFloors(
     ctx.fill();
 
     if (blit) {
-      ctx.save();
-      roundRect(ctx, x, y, w, h, 4);
-      ctx.clip();
       drawNine(ctx, blit, x, y, w, h);
-      ctx.restore();
     } else {
       drawFallbackLedge(ctx, x, y, w, h, f.kind);
     }
@@ -430,7 +453,6 @@ function drawNine(
   const capD = Math.max(6, Math.min(14, w * 0.16));
   const midD = Math.max(1, w - capD * 2);
   if (cap <= 0 || midS <= 0 || capD <= 0 || midD <= 0 || h <= 0) return;
-  ctx.imageSmoothingEnabled = true;
   try {
     ctx.drawImage(img, sx, sy, cap, sh, x, y, capD, h);
     ctx.drawImage(img, sx + cap, sy, midS, sh, x + capD, y, midD, h);
@@ -439,7 +461,6 @@ function drawNine(
     ctx.fillStyle = "#6a7888";
     ctx.fillRect(x, y, w, h);
   }
-  ctx.imageSmoothingEnabled = false;
 }
 
 function drawFallbackLedge(

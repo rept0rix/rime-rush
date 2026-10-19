@@ -9,7 +9,7 @@ import { BellButton } from "@/components/note-inbox";
 import { StatusDot } from "@/components/status-dot";
 import { TouchControls } from "@/components/touch-controls";
 import { Pause, Settings } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { audioBus } from "@/game/audio";
 import { applyShake, applySound } from "@/game/haptics";
 import { RimeEngine, type HudSnap } from "@/game/engine";
@@ -52,6 +52,11 @@ export function HubHome() {
   // Presence ghosts via live-tower / activity-pulse — no WebRTC on hub solo.
   useLiveTower(engineRef, selfId);
 
+  const handleMove = useCallback((x: number) => engineRef.current?.input.setTouch({ move: x }), []);
+  const handleJump = useCallback((d: boolean) => engineRef.current?.input.setTouch({ jump: d }), []);
+  const handlePower = useCallback((d: boolean) => engineRef.current?.input.setTouch({ power: d }), []);
+  const handleWeapon = useCallback((d: boolean) => engineRef.current?.input.setTouch({ weapon: d }), []);
+
   useEffect(() => {
     const load = () => {
       void getDashboard()
@@ -80,24 +85,25 @@ export function HubHome() {
   };
 
   const startSolo = () => {
-    const eng = engineRef.current;
-    if (eng && !eng.attract && eng.mode === "solo" && eng.started) {
-      setLive(true);
-      return;
-    }
     if (!commitName()) return;
     audioBus.unlock();
     if (save.status === "waiting") patchSave({ status: "online" });
     useGame.getState().setResult(null);
     useGame.getState().setInRun(true);
-    const pl = engineRef.current?.local();
-    if (pl) pl.name = (nameDraft.trim() || save.name.trim() || "Climber").slice(0, 12);
-    engineRef.current?.beginPlay();
-    setLive(true);
-    setSettings(false);
     setMode("solo");
+    setScreen("play");
   };
   startRef.current = startSolo;
+
+  const startBots = () => {
+    if (!commitName()) return;
+    audioBus.unlock();
+    if (save.status === "waiting") patchSave({ status: "online" });
+    useGame.getState().setResult(null);
+    useGame.getState().setInRun(true);
+    setMode("bots");
+    setScreen("play");
+  };
 
   const startRoom = () => {
     if (!commitName()) return;
@@ -224,20 +230,7 @@ export function HubHome() {
         className="absolute inset-0 h-full w-full touch-none"
         style={{ touchAction: "none" }}
         onContextMenu={(e) => e.preventDefault()}
-        onPointerDown={() => {
-          if (!live && !result) startSolo();
-        }}
       />
-
-      {!live && !result && (
-        <button
-          type="button"
-          aria-label={copy.play}
-          onClick={startSolo}
-          onPointerDown={startSolo}
-          className="absolute inset-0 z-20 bg-transparent"
-        />
-      )}
 
       <div className={`absolute inset-x-0 top-0 z-30 flex items-start justify-between px-3 pt-[max(8px,env(safe-area-inset-top))] ${live || result ? "chrome-out" : ""}`}>
         <button
@@ -323,20 +316,34 @@ export function HubHome() {
       )}
 
       {!askName && !live && !result && (
-        <button
-          type="button"
-          aria-label="Room"
-          onClick={startRoom}
-          className="absolute right-3 bottom-[max(12px,env(safe-area-inset-bottom))] z-30"
-        >
-          <span className="relative block">
-            <img src="/ui/room.png" alt="Room" className="h-14 w-auto object-contain drop-shadow-lg" />
-            <span className="absolute -top-1 -left-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-mint px-1.5 text-[10px] font-bold text-bg">
-              {online}
+        <div className="absolute inset-x-3 bottom-[max(12px,env(safe-area-inset-bottom))] z-30 flex items-end justify-between">
+          <button
+            type="button"
+            aria-label="VS Bots"
+            onClick={startBots}
+            className="flex flex-col items-center"
+          >
+            <span className="flex items-center gap-1.5 rounded-full border-2 border-gold/70 bg-[#1a100c]/90 px-3.5 py-2.5 shadow-lg active:scale-95">
+              <span className="font-display text-base font-bold text-gold">🤖 BOTS</span>
             </span>
-          </span>
-          <span className="mt-0.5 block text-center text-[10px] font-bold text-ice">{online} online</span>
-        </button>
+            <span className="mt-1 text-[10px] font-bold text-muted">Practice</span>
+          </button>
+
+          <button
+            type="button"
+            aria-label="Room"
+            onClick={startRoom}
+            className="flex flex-col items-center"
+          >
+            <span className="relative block">
+              <img src="/ui/room.png" alt="Room" className="h-14 w-auto object-contain drop-shadow-lg active:scale-95" />
+              <span className="absolute -top-1 -left-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-mint px-1.5 text-[10px] font-bold text-bg">
+                {online}
+              </span>
+            </span>
+            <span className="mt-0.5 block text-center text-[10px] font-bold text-ice">{online} online</span>
+          </button>
+        </div>
       )}
 
       {live && hud && (
@@ -414,10 +421,10 @@ export function HubHome() {
           power={hud.power}
           weapon={hud.weapon}
           ammo={Math.ceil(hud.weaponT)}
-          onMove={(x) => engineRef.current?.input.setTouch({ move: x })}
-          onJump={(d) => engineRef.current?.input.setTouch({ jump: d })}
-          onPower={(d) => engineRef.current?.input.setTouch({ power: d })}
-          onWeapon={(d) => engineRef.current?.input.setTouch({ weapon: d })}
+          onMove={handleMove}
+          onJump={handleJump}
+          onPower={handlePower}
+          onWeapon={handleWeapon}
         />
       )}
 

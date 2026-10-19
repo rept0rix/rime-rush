@@ -1,59 +1,184 @@
 import { useState } from "react";
-import { GROK_PROVIDERS, signIn } from "@/lib/auth/client";
+import { authClient, GROK_PROVIDERS, signIn } from "@/lib/auth/client";
 import { useGame } from "@/game/store";
-
-type SocialId = "google" | "x" | "facebook" | "tiktok";
-
-const REAL: Record<"google" | "x", string> = {
-  google: "grok-google",
-  x: "grok-x",
-};
+import { syncLocalSaveWithCloud } from "@/lib/rime-data";
 
 export function SocialButtons({
   size = "md",
   onPicked,
 }: {
   size?: "sm" | "md";
-  onPicked?: (id: "google" | "x") => void;
+  onPicked?: (id: "google" | "x" | "email") => void;
 }) {
-  const [soon, setSoon] = useState<SocialId | null>(null);
+  const [showEmail, setShowEmail] = useState(false);
+  const [isRegister, setIsRegister] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const patchSave = useGame((s) => s.patchSave);
 
-  const go = (id: SocialId) => {
-    if (id === "facebook" || id === "tiktok") {
-      setSoon(id);
-      window.setTimeout(() => setSoon(null), 1600);
+  const goOauth = (id: "google" | "x") => {
+    const providerId = id === "google" ? "grok-google" : "grok-x";
+    if (!GROK_PROVIDERS.some((p) => p.providerId === providerId)) {
+      setError("OAuth provider not configured on this host. Use Email sign-in.");
+      setShowEmail(true);
       return;
     }
-    const providerId = REAL[id];
-    if (!GROK_PROVIDERS.some((p) => p.providerId === providerId)) return;
     patchSave({ authProvider: id });
     onPicked?.(id);
     void signIn(providerId, { callbackURL: "/" });
   };
 
-  const box = size === "sm" ? "size-10" : "size-12";
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError("Please fill in email and password");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      if (isRegister) {
+        const userName = name.trim() || useGame.getState().save.name || "Climber";
+        const res = await authClient.signUp.email({
+          email,
+          password,
+          name: userName,
+        });
+        if (res.error) {
+          setError(res.error.message || "Sign up failed");
+          setLoading(false);
+          return;
+        }
+      } else {
+        const res = await authClient.signIn.email({
+          email,
+          password,
+        });
+        if (res.error) {
+          setError(res.error.message || "Invalid email or password");
+          setLoading(false);
+          return;
+        }
+      }
+      patchSave({ authProvider: "email" });
+      onPicked?.("email");
+      // Trigger cloud-to-device save sync
+      void syncLocalSaveWithCloud();
+      setShowEmail(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Authentication error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const box = size === "sm" ? "size-10" : "size-11";
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="flex items-center justify-center gap-2.5">
-        <SocBtn className={box} label="Google" onClick={() => go("google")}>
+    <div className="flex w-full max-w-[280px] flex-col items-center gap-2.5">
+      <div className="flex items-center justify-center gap-3">
+        <SocBtn className={box} label="Google" onClick={() => goOauth("google")}>
           <GoogleMark />
         </SocBtn>
-        <SocBtn className={box} label="Facebook" onClick={() => go("facebook")}>
-          <FacebookMark />
-        </SocBtn>
-        <SocBtn className={box} label="TikTok" onClick={() => go("tiktok")}>
-          <TikTokMark />
-        </SocBtn>
-        <SocBtn className={box} label="X" onClick={() => go("x")}>
+        <SocBtn className={box} label="X" onClick={() => goOauth("x")}>
           <XMark />
         </SocBtn>
+        <button
+          type="button"
+          onClick={() => setShowEmail(!showEmail)}
+          className={`${box} grid place-items-center rounded-full border border-line bg-[#1a100c] text-xs font-bold text-ice shadow-sm active:scale-95`}
+          title="Sign in with Email"
+        >
+          ✉
+        </button>
       </div>
-      {soon ? (
-        <p className="text-[11px] text-muted">{soon === "facebook" ? "Facebook" : "TikTok"} coming soon</p>
-      ) : (
-        <p className="text-[11px] text-muted">Google and X save your score</p>
+
+      {!showEmail && (
+        <button
+          type="button"
+          onClick={() => setShowEmail(true)}
+          className="text-[11px] text-muted underline underline-offset-2 hover:text-ice"
+        >
+          Or sign in with email & password
+        </button>
+      )}
+
+      {showEmail && (
+        <form
+          onSubmit={handleEmailAuth}
+          className="mt-1 flex w-full flex-col gap-2 rounded-xl border border-line bg-[#140c08]/90 p-3 text-left shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <span className="font-display text-xs text-gold">
+              {isRegister ? "CREATE ACCOUNT" : "SIGN IN WITH EMAIL"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setIsRegister(!isRegister);
+                setError("");
+              }}
+              className="text-[10px] text-ice underline"
+            >
+              {isRegister ? "Already have account?" : "Need account?"}
+            </button>
+          </div>
+
+          {isRegister && (
+            <input
+              type="text"
+              placeholder="Player Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-8 rounded-lg border border-line bg-black/40 px-2.5 text-xs text-fg placeholder:text-muted focus:outline-none focus:border-ice"
+              maxLength={16}
+            />
+          )}
+
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="h-8 rounded-lg border border-line bg-black/40 px-2.5 text-xs text-fg placeholder:text-muted focus:outline-none focus:border-ice"
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            className="h-8 rounded-lg border border-line bg-black/40 px-2.5 text-xs text-fg placeholder:text-muted focus:outline-none focus:border-ice"
+          />
+
+          {error && <p className="text-[10px] text-rose-400">{error}</p>}
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="submit"
+              disabled={loading}
+              className="h-8 flex-1 rounded-lg bg-ice font-display text-xs text-bg transition hover:brightness-110 disabled:opacity-50"
+            >
+              {loading ? "SAVING..." : isRegister ? "REGISTER" : "LOGIN"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowEmail(false);
+                setError("");
+              }}
+              className="h-8 rounded-lg border border-line px-2 text-[10px] text-muted hover:text-fg"
+            >
+              CANCEL
+            </button>
+          </div>
+        </form>
       )}
     </div>
   );
@@ -97,28 +222,6 @@ export function XMark() {
   return (
     <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden>
       <path d="M18.2 3H21l-6.5 7.4L22 21h-6.2l-4.3-5.6L6.2 21H3.4l7-8L2 3h6.3l3.9 5.2L18.2 3zm-1.1 16.2h1.7L7 4.7H5.2l11.9 14.5z" />
-    </svg>
-  );
-}
-
-export function FacebookMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
-      <path
-        fill="#1877F2"
-        d="M22 12.1C22 6.5 17.5 2 12 2S2 6.5 2 12.1c0 5 3.7 9.1 8.4 9.9v-7H8.1v-2.9h2.3V9.9c0-2.3 1.4-3.6 3.5-3.6 1 0 2 .2 2 .2v2.2h-1.1c-1.1 0-1.5.7-1.5 1.4v1.7h2.5l-.4 2.9h-2.1v7C18.3 21.2 22 17.1 22 12.1z"
-      />
-    </svg>
-  );
-}
-
-export function TikTokMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
-      <path
-        fill="currentColor"
-        d="M14.2 3c.3 2.4 1.6 4.4 3.8 5.1v2.5c-1.4.1-2.7-.3-3.8-1.1v6.2c0 3.3-2.7 6-6.1 6S2 18.9 2 15.6c0-3.2 2.5-5.8 5.7-6v2.6c-1.7.3-3 1.7-3 3.4 0 1.9 1.6 3.5 3.6 3.5s3.6-1.6 3.6-3.5V3h2.3z"
-      />
     </svg>
   );
 }

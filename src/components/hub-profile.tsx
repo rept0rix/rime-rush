@@ -19,7 +19,7 @@ import { useGame } from "@/game/store";
 import type { PresenceStatus, WeaponId } from "@/game/types";
 import { requestAlerts } from "@/lib/alerts";
 import { clientId } from "@/lib/client-id";
-import { inviteFriend, listFriends, purgeMyAccount, removeFriend, type FriendRow } from "@/lib/rime-data";
+import { inviteFriend, listFriends, purgeMyAccount, removeFriend, syncLocalSaveWithCloud, type FriendRow } from "@/lib/rime-data";
 import { UserMinus } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -39,6 +39,7 @@ export function HubProfile() {
   const [invited, setInvited] = useState("");
   const [confirm, setConfirm] = useState<null | "out" | "del">(null);
   const [busy, setBusy] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string>("");
   const selfId = clientId();
 
   useEffect(() => {
@@ -46,7 +47,8 @@ export function HubProfile() {
     const next: { name?: string } = {};
     if (!save.name.trim() && user.displayName) next.name = user.displayName.slice(0, 12);
     if (next.name) patchSave(next);
-  }, [signedIn, user, save.name, patchSave]);
+    void syncLocalSaveWithCloud();
+  }, [signedIn, user]);
 
   const loadCrew = () => {
     void listFriends({ data: { clientId: selfId } })
@@ -184,10 +186,17 @@ export function HubProfile() {
           />
           <PlaqueBtn
             src="/ui/set-home.jpg"
-            label="HOME"
+            label={typeof navigator !== "undefined" && (navigator.userAgent.includes("RimeRush-iOS") || Boolean((window as any).webkit?.messageHandlers?.haptics)) ? "SYNC" : "HOME"}
             tone="ice"
             testId="feel-home"
-            onFire={() => setOverlay("install")}
+            onFire={async () => {
+              const isNative = typeof navigator !== "undefined" && (navigator.userAgent.includes("RimeRush-iOS") || Boolean((window as any).webkit?.messageHandlers?.haptics));
+              if (isNative) {
+                await syncLocalSaveWithCloud();
+              } else {
+                setOverlay("install");
+              }
+            }}
           />
           <PlaqueBtn
             src="/ui/set-signout.jpg"
@@ -261,15 +270,33 @@ export function HubProfile() {
           soon={false}
         />
         <LinkRow mark={<XMark />} name="X" on={signedIn && save.authProvider === "x"} soon={false} />
-        <LinkRow mark={<FacebookMark />} name="Facebook" on={false} soon />
-        <LinkRow mark={<TikTokMark />} name="TikTok" on={false} soon />
+        <LinkRow
+          mark={<span className="text-sm">✉</span>}
+          name="Email & Password"
+          on={signedIn && (save.authProvider === "email" || !save.authProvider)}
+          soon={false}
+        />
         <div className="pt-2">
           {isPending ? (
             <div className="h-10 animate-pulse rounded-xl bg-line/40" />
           ) : signedIn ? (
-            <p className="text-center text-xs font-bold text-mint">
-              Connected as {user?.displayName ?? "you"}
-            </p>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-center text-xs font-bold text-mint">
+                Connected as {user?.displayName ?? user?.email ?? "you"}
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  setSyncStatus("Syncing...");
+                  await syncLocalSaveWithCloud();
+                  setSyncStatus("Save Synced!");
+                  setTimeout(() => setSyncStatus(""), 2000);
+                }}
+                className="rounded-lg border border-line bg-black/40 px-3 py-1.5 text-xs font-bold text-ice hover:bg-black/60 active:scale-95"
+              >
+                {syncStatus || "☁ Sync Cloud Save"}
+              </button>
+            </div>
           ) : (
             <SocialButtons size="sm" />
           )}

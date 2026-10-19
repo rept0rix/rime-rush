@@ -162,6 +162,9 @@ export class RimeEngine {
 	hooks: EngineHooks;
 	remotes = new Map<string, { p: Player; tx: number; ty: number; tvx: number }>();
 	raf = 0;
+	lastHudEmit = 0;
+	lastCssW = 0;
+	lastCssH = 0;
 	sendAcc = 0;
 	juice: JuiceSink;
 	started = false;
@@ -196,12 +199,18 @@ export class RimeEngine {
 	storyLine: string | null = null;
 	storyUntil = 0;
 	lastDrop = 0;
+	prevCamY = -360;
+	cachedCssW = 390;
+	cachedCssH = 780;
+	resizeObserver: ResizeObserver | null = null;
+	dropRng: () => number;
 	constructor(canvas: HTMLCanvasElement, boot: Boot, hooks: EngineHooks) {
 		this.canvas = canvas;
 		const ctx = canvas.getContext("2d");
 		if (!ctx) throw new Error("canvas");
 		this.ctx = ctx;
 		this.world = new World(boot.seed);
+		this.dropRng = mulberry32(boot.seed + 8888);
 		this.mode = boot.mode;
 		this.lang = boot.lang;
 		this.localId = boot.localId;
@@ -228,17 +237,17 @@ export class RimeEngine {
 			jump: (p) => {
 				if (p.id === this.localId) {
 					this.audio.jump(p.combo);
-					this.shakeOn && buzz(p.combo >= 5 ? 14 : 8);
+					if (this.shakeOn && p.combo >= 8) buzz(14);
 					if (Math.abs(p.vx) > 200) this.punch(.22);
 				}
 				this.burst(p.x, p.y, 7 + Math.min(6, p.combo), "#e8f4ff", "dust");
 			},
 			land: (p, floor) => {
+				const kind = floor?.kind ?? "ice";
 				if (p.id === this.localId) {
 					this.audio.land();
-					this.shakeOn && buzz(12);
+					if (this.shakeOn && (kind === "spring" || kind === "crumble")) buzz(12);
 				}
-				const kind = floor?.kind ?? "ice";
 				if (kind === "spring") this.burst(p.x, p.y, 8, "#7cffb2", "spark");
 				else if (kind === "crumble") this.burst(p.x, p.y, 8, "#c4a882", "dust");
 				else if (kind === "check") this.burst(p.x, p.y, 7, "#ffd36a", "spark");
@@ -250,7 +259,7 @@ export class RimeEngine {
 				this.burst(p.x, p.y + 16, 6, "#7ee7ff", "ice");
 				if (p.id === this.localId) {
 					this.audio.wall();
-					this.shakeOn && buzz(16);
+					if (this.shakeOn && Math.abs(p.vx) > 220) buzz(12);
 					this.punch(.48);
 				}
 			},
@@ -323,6 +332,24 @@ export class RimeEngine {
 		this.started = true;
 		this.last = performance.now();
 		void load;
+
+		const parent = this.canvas.parentElement;
+		if (parent) {
+			this.cachedCssW = parent.clientWidth || 390;
+			this.cachedCssH = parent.clientHeight || 780;
+			if (typeof ResizeObserver !== "undefined") {
+				this.resizeObserver = new ResizeObserver((entries) => {
+					for (const entry of entries) {
+						if (entry.contentRect) {
+							this.cachedCssW = entry.contentRect.width || 390;
+							this.cachedCssH = entry.contentRect.height || 780;
+						}
+					}
+				});
+				this.resizeObserver.observe(parent);
+			}
+		}
+
 		if (this.wantPlay) this.beginPlay();
 		else this.audio.setScene(this.attract ? "menu" : "game");
 		const loop = (now: number) => {
@@ -333,17 +360,23 @@ export class RimeEngine {
 				this.last = now;
 				if (this.paused || this.over) {
 					this.tickPausedShake(raw);
-					this.draw();
-					this.emitHud();
+					this.draw(1);
+					this.emitHud(true);
 					return;
 				}
 				this.acc += raw;
 				while (this.acc >= FIXED_DT) {
+					for (const p of this.players) {
+						p.prevX = p.x;
+						p.prevY = p.y;
+					}
+					this.prevCamY = this.cam.y;
 					this.step(FIXED_DT);
 					this.acc -= FIXED_DT;
 				}
-				this.draw();
-				this.emitHud();
+				const alpha = Math.min(1, Math.max(0, this.acc / FIXED_DT));
+				this.draw(alpha);
+				this.emitHud(false);
 			} catch {
 				this.acc = 0;
 			}
@@ -356,9 +389,12 @@ export class RimeEngine {
 		cancelAnimationFrame(this.raf);
 		this.input.detach();
 		this.audio.setScene("off");
+		this.resizeObserver?.disconnect();
+		this.resizeObserver = null;
 	}
 	setPaused(v: boolean) {
 		this.paused = v;
+		this.emitHud(true);
 	}
 	setMute(v: boolean) {
 		this.audio.setMute(v);
@@ -587,7 +623,10 @@ export class RimeEngine {
 		} else if (msg.t === "win") this.finish(msg.who, msg.name);
 		else if (msg.t === "power") {
 			const p = this.players.find((x) => x.id === msg.who);
-			if (p) p.power = null;
+			if (p) {
+				p.power = msg.power;
+				this.cast(p);
+			}
 		}
 	}
 	step(dt: any) {
@@ -1200,7 +1239,7 @@ export class RimeEngine {
 			this.slash(p);
 			if (p.blade > 0) p.power = "blade";
 		}
-		if (isAttack(id)) this.hooks.sendEvent?.({
+		if (p.id === this.localId) this.hooks.sendEvent?.({
 			t: "power",
 			who: p.id,
 			power: id
@@ -1363,30 +1402,75 @@ export class RimeEngine {
 			kind
 		});
 	}
-	draw() {
+	draw(alpha = 1) {
 		const canvas = this.canvas;
-		const parent = canvas.parentElement;
-		const cssW = parent?.clientWidth || 390;
-		const cssH = parent?.clientHeight || 780;
-		const dpr = Math.min(1.25, window.devicePixelRatio || 1);
+		const cssW = this.cachedCssW || 390;
+		const cssH = this.cachedCssH || 780;
+		const dpr = Math.min(2, window.devicePixelRatio || 1);
 		const scale = cssW / 390;
 		const viewW = 390;
 		const viewH = cssH / scale;
 		this.viewH = Math.max(560, cssH / scale);
 		const bw = Math.round(cssW * dpr);
 		const bh = Math.round(cssH * dpr);
-		if (canvas.width !== bw || canvas.height !== bh) {
+		if (Math.abs(canvas.width - bw) > 2 || Math.abs(canvas.height - bh) > 2 || !this.lastCssW) {
+			this.lastCssW = cssW;
+			this.lastCssH = cssH;
 			canvas.width = bw;
 			canvas.height = bh;
+			canvas.style.width = `${cssW}px`;
+			canvas.style.height = `${cssH}px`;
 		}
-		canvas.style.width = `${cssW}px`;
-		canvas.style.height = `${cssH}px`;
 		const ctx = this.ctx;
 		ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
 		ctx.clearRect(0, 0, viewW, viewH);
-		drawFrame(ctx, this.world, this.players, this.particles, this.popups, this.cam, this.sprites, viewW, viewH, performance.now(), this.lang, this.localId, this.local()?.floor ?? 0, this.iceFlash, this.shots, this.attract, this.creeps, this.pitY, this.corpses);
+
+		const renderCam: Cam = {
+			y: this.prevCamY + (this.cam.y - this.prevCamY) * alpha,
+			shakeX: this.cam.shakeX,
+			shakeY: this.cam.shakeY,
+		};
+
+		const origCoords: { p: Player; x: number; y: number }[] = [];
+		for (const p of this.players) {
+			origCoords.push({ p, x: p.x, y: p.y });
+			p.x = (p.prevX ?? p.x) + (p.x - (p.prevX ?? p.x)) * alpha;
+			p.y = (p.prevY ?? p.y) + (p.y - (p.prevY ?? p.y)) * alpha;
+		}
+
+		drawFrame(
+			ctx,
+			this.world,
+			this.players,
+			this.particles,
+			this.popups,
+			renderCam,
+			this.sprites,
+			viewW,
+			viewH,
+			performance.now(),
+			this.lang,
+			this.localId,
+			this.local()?.floor ?? 0,
+			this.iceFlash,
+			this.shots,
+			this.attract,
+			this.creeps,
+			this.pitY,
+			this.corpses,
+		);
+
+		for (const oc of origCoords) {
+			oc.p.x = oc.x;
+			oc.p.y = oc.y;
+		}
 	}
-	emitHud() {
+	emitHud(force = false) {
+		const now = performance.now();
+		if (!force && now - this.lastHudEmit < 66) {
+			return;
+		}
+		this.lastHudEmit = now;
 		const p = this.local();
 		if (p) writeLivePose({
 			x: p.x,
@@ -1518,12 +1602,12 @@ export class RimeEngine {
 		this.lastDrop = 0;
 		const up = this.world.floorByN(p.floor + 2) ?? this.world.floorByN(p.floor + 1);
 		if (!up) return;
-		const kind = p.weaponT < 2.2 ? "ammo" : p.hp < 55 ? "pill" : this.world.rng() < .5 ? "power" : "ammo";
+		const kind = p.weaponT < 2.2 ? "ammo" : p.hp < 55 ? "pill" : this.dropRng() < .5 ? "power" : "ammo";
 		this.world.pickups.push({
 			id: this.world.nextPickupId++,
-			x: up.x + up.w * (.3 + this.world.rng() * .4),
+			x: up.x + up.w * (.3 + this.dropRng() * .4),
 			y: up.y + 22 + 24,
-			power: kind === "power" ? randomPower(this.world.rng) : null,
+			power: kind === "power" ? randomPower(this.dropRng) : null,
 			kind,
 			taken: false
 		});
@@ -1557,3 +1641,13 @@ function comboYellOf(n: number) {
 	if (n >= 2) return "X2";
 	return "";
 }
+
+function mulberry32(a: number) {
+	return function () {
+		let t = (a += 0x6d2b79f5);
+		t = Math.imul(t ^ (t >>> 15), t | 1);
+		t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+

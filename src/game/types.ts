@@ -124,6 +124,9 @@ export interface Player {
   trail: { x: number; y: number; spin: number; facing: 1 | -1 }[];
   comboJumps: number;
   comboStartFloor: number;
+  prevX?: number;
+  prevY?: number;
+  wallCoyote?: number;
 }
 
 export interface Particle {
@@ -232,7 +235,7 @@ export interface SaveData {
   ownedSkins: number[];
   ownedWeapons: WeaponId[];
   seenBoard: boolean;
-  authProvider: "" | "google" | "x";
+  authProvider: "" | "google" | "x" | "email";
   status: PresenceStatus;
   alerts: boolean;
   coachLeft: number;

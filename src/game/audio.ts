@@ -49,16 +49,21 @@ export class AudioBus {
   private filter: BiquadFilterNode | null = null;
   private sfxVoices = 0;
   private readonly sfxCap = 6;
+  private kenneyBuffers: Map<string, AudioBuffer> = new Map();
+  private kenneyLoading: Set<string> = new Set();
   unlocked = false;
 
   unlock(): void {
+    if (this.unlocked && this.ctx?.state === "running" && this.stemsReady) {
+      return;
+    }
+
     const AC =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AC) {
       this.primeHtml();
       if (this.stemsReady) return;
-      this.primeSpeech();
       this.bootStemsHtmlOnly();
       return;
     }
@@ -68,7 +73,6 @@ export class AudioBus {
       } catch {
         this.primeHtml();
         if (this.stemsReady) return;
-        this.primeSpeech();
         this.bootStemsHtmlOnly();
         return;
       }
@@ -98,7 +102,6 @@ export class AudioBus {
       remixThenResume();
       return;
     }
-    this.primeSpeech();
     this.bootStems();
     this.publishTest();
     remixThenResume();
@@ -206,21 +209,27 @@ export class AudioBus {
     }
   }
 
-  private primeSpeech(): void {
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) return;
-      const warm = new SpeechSynthesisUtterance(" ");
-      warm.volume = 0;
-      synth.speak(warm);
-      synth.cancel();
-      void synth.getVoices();
-    } catch {
-      /* ignore */
-    }
+  private loadKenneyBuffer(src: string): void {
+    if (!this.ctx || this.kenneyBuffers.has(src) || this.kenneyLoading.has(src)) return;
+    this.kenneyLoading.add(src);
+    fetch(src)
+      .then((res) => res.arrayBuffer())
+      .then((ab) => this.ctx?.decodeAudioData(ab))
+      .then((decoded) => {
+        if (decoded) this.kenneyBuffers.set(src, decoded);
+      })
+      .catch(() => {
+        /* fallback to HTML Audio */
+      });
   }
 
   private primeHtml(): void {
+    this.loadKenneyBuffer(KENNEY_JUMP);
+    this.loadKenneyBuffer(KENNEY_DOUBLE_JUMP);
+    this.loadKenneyBuffer(KENNEY_SUPER_JUMP);
+    this.loadKenneyBuffer(KENNEY_LAND);
+    this.loadKenneyBuffer(KENNEY_DEATH);
+
     if (!this.htmlJump) {
       this.htmlJump = this.makeHtml(JUMP_WAV, 0.55);
       this.playHtml(this.htmlJump, 0.0001);
@@ -268,9 +277,29 @@ export class AudioBus {
     }
   }
 
-  /** One-shot Kenney clip: pause, rewind, play. Respects mute + pageHidden. */
-  private playKenney(a: HTMLAudioElement | null, vol: number): boolean {
-    if (!a || this.muted || this.pageHidden) return false;
+  /** Plays Kenney SFX via Web Audio API AudioBuffer for ultra-low latency & zero MediaPlayer lockup on Android */
+  private playKenney(src: string, a: HTMLAudioElement | null, vol: number): boolean {
+    if (this.muted || this.pageHidden) return false;
+
+    const buf = this.kenneyBuffers.get(src);
+    if (buf && this.ctx && this.sfx && this.ctx.state === "running") {
+      try {
+        const source = this.ctx.createBufferSource();
+        source.buffer = buf;
+        const gain = this.ctx.createGain();
+        gain.gain.value = vol;
+        source.connect(gain);
+        gain.connect(this.sfx);
+        source.start(0);
+        return true;
+      } catch {
+        /* fallback to HTMLAudio */
+      }
+    } else if (this.ctx && !this.kenneyBuffers.has(src)) {
+      this.loadKenneyBuffer(src);
+    }
+
+    if (!a) return false;
     try {
       a.pause();
       a.currentTime = 0;
@@ -456,7 +485,7 @@ export class AudioBus {
     const rate = this.scene === "game" ? 1 + Math.min(0.14, h * 0.012) : 1;
     for (const id of ["climb", "heat", "rush"] as StemId[]) {
       const el = this.stems[id]?.el;
-      if (el) {
+      if (el && Math.abs(el.playbackRate - rate) > 0.02) {
         try {
           el.playbackRate = rate;
         } catch {
@@ -612,19 +641,22 @@ export class AudioBus {
     this.duckStems(0.35);
     const n = Math.min(40, combo);
     let clip = this.htmlKenneyJump;
+    let src = KENNEY_JUMP;
     let vol = 0.7;
     if (n >= 5) {
       clip = this.htmlKenneySuperJump;
+      src = KENNEY_SUPER_JUMP;
       vol = 0.78;
     } else if (n >= 2) {
       clip = this.htmlKenneyDoubleJump;
+      src = KENNEY_DOUBLE_JUMP;
       vol = 0.74;
     }
-    this.playKenney(clip, vol);
+    this.playKenney(src, clip, vol);
   }
 
   land(): void {
-    this.playKenney(this.htmlKenneyLand, 0.65);
+    this.playKenney(KENNEY_LAND, this.htmlKenneyLand, 0.65);
   }
 
   wall(): void {
@@ -697,25 +729,10 @@ export class AudioBus {
   death(): void {
     this.cut();
     if (this.muted || this.pageHidden) return;
-    const a = this.htmlKenneyDeath;
-    if (this.kenneyReady(a)) {
-      try {
-        a!.pause();
-        a!.currentTime = 0;
-        a!.volume = 0.85;
-        a!.muted = false;
-        const p = a!.play();
-        if (p) {
-          void p.catch(() => this.playDeathSting());
-          return;
-        }
-        return;
-      } catch {
-        this.playDeathSting();
-        return;
-      }
+    const ok = this.playKenney(KENNEY_DEATH, this.htmlKenneyDeath, 0.85);
+    if (!ok) {
+      this.playDeathSting();
     }
-    this.playDeathSting();
   }
 
   /** Descending "aww/fell" whoosh (~0.65s): pitch fall + noise, louder than tiny blips. */

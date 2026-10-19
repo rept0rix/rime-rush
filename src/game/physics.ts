@@ -90,6 +90,9 @@ export function makePlayer(
     trail: [],
     comboJumps: 0,
     comboStartFloor: 0,
+    prevX: spawnX,
+    prevY: FLOOR_H,
+    wallCoyote: 0,
   };
 }
 
@@ -168,14 +171,19 @@ export function stepPlayer(
   if (p.grounded) p.airT = 0;
   else p.airT += dt;
 
+  if (p.wallCoyote !== undefined && p.wallCoyote > 0) p.wallCoyote -= dt;
   const magnetWall = e.magnetT > 0 && p.onWall !== 0;
-  const wallKick = p.onWall !== 0 && p.airT > 0.05 && !p.grounded;
+  const wallKick = (p.onWall !== 0 || (p.wallCoyote !== undefined && p.wallCoyote > 0)) && p.airT > 0.04 && !p.grounded;
   const canJump = !frozen && (p.coyote > 0 || magnetWall || wallKick);
   if (p.jumpBuf > 0 && canJump) {
+    if (wallKick && p.wallDir) {
+      p.vx = -p.wallDir * 220;
+    }
     bounceUp(p, juice);
     p.jumpBuf = 0;
     p.coyote = 0;
     p.onWall = 0;
+    p.wallCoyote = 0;
     p.wallLock = 0.12;
   }
 
@@ -343,6 +351,7 @@ function bounceWall(p: Player, dir: number, juice: JuiceSink): void {
   p.vx = dir * speed;
   p.onWall = dir < 0 ? 1 : -1;
   p.wallDir = p.onWall;
+  p.wallCoyote = 0.16;
   p.wallLock = F.WALL_LOCK;
   p.facing = dir > 0 ? 1 : -1;
   p.squash = 0.86;

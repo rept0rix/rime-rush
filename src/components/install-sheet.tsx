@@ -7,10 +7,19 @@ function isIos(): boolean {
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
+function isNativeOrStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    !!(window as any).webkit?.messageHandlers ||
+    !!(window.navigator as any).standalone ||
+    (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches)
+  );
+}
+
 export function InstallSheet() {
   const overlay = useGame((s) => s.overlay);
   const setOverlay = useGame((s) => s.setOverlay);
-  if (overlay !== "install") return null;
+  if (overlay !== "install" || isNativeOrStandalone()) return null;
   const ios = isIos();
 
   return (

@@ -39,3 +39,15 @@ assets/
 /tmp/
 playwright-report/
 test-results/
+.vercel
+.env*.local
+
+# iOS
+**/xcuserdata/
+**/*.xcuserstate
+ios/build/
+ios/DerivedData/
+
+# Android release signing material (keep private and out of Git)
+android/rimerush-upload.keystore
+android/keystore.properties

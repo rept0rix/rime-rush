@@ -1,12 +1,48 @@
 import { audioBus } from "./audio";
 
+let lastRumbleTime = 0;
+
 export function rumble(pat: number | number[] = 24): void {
   try {
+    if (typeof window === "undefined") return;
+
+    // pat 0 means cancel all ongoing vibrations immediately
+    if (pat === 0) {
+      try {
+        navigator.vibrate?.(0);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+
+    // Native iOS bridge if running inside iOS app wrapper
+    const webkit = (window as unknown as { webkit?: { messageHandlers?: { haptics?: { postMessage: (msg: string) => void } } } }).webkit;
+    if (webkit?.messageHandlers?.haptics) {
+      const isHeavy = Array.isArray(pat) ? pat.length > 2 || (pat[0] ?? 0) > 50 : pat > 40;
+      webkit.messageHandlers.haptics.postMessage(isHeavy ? "heavy" : "light");
+      return;
+    }
+
+    // Minimum cooldown between vibration triggers (120ms) to protect Android motors & battery
+    const now = performance.now();
+    if (now - lastRumbleTime < 120) return;
+    lastRumbleTime = now;
+
     // Chrome logs a blocked-call warning before the first user gesture; skip until then.
     if ((navigator as { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive === false) return;
-    navigator.vibrate?.(pat);
+
+    // Clamp vibration durations to prevent phone motor overheating on Android
+    let safePat: number | number[];
+    if (Array.isArray(pat)) {
+      safePat = pat.slice(0, 5).map((p) => Math.min(60, Math.max(0, p)));
+    } else {
+      safePat = Math.min(40, Math.max(0, pat));
+    }
+
+    navigator.vibrate?.(safePat);
   } catch {
-    /* iOS has no vibrate API */
+    /* fallback */
   }
 }
 

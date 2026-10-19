@@ -66,6 +66,7 @@ test("RIME ships auth and game migrations in the globbed directory", () => {
       "0003_activity.sql",
       "0004_live.sql",
       "0005_social.sql",
+      "0006_cloud_and_rooms.sql",
     ],
   );
   // Auth source copy remains available under migrations/auth/ for the on/off path.

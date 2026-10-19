@@ -33,7 +33,7 @@ function Dash() {
   const maxHour = Math.max(1, ...(data?.hourly.map((h) => h.n) ?? [1]));
 
   return (
-    <main className="min-h-dvh bg-[#08060a] px-4 py-6 text-[#f4ead8]">
+    <main className="min-h-dvh h-dvh overflow-y-auto bg-[#08060a] px-4 py-6 text-[#f4ead8]">
       <div className="mx-auto max-w-5xl">
         <div className="flex items-end justify-between gap-3">
           <div>

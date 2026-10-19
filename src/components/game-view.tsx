@@ -5,14 +5,14 @@ import { RivalStrip } from "@/components/rival-strip";
 import { useLiveTower } from "@/components/live-tower";
 import { TouchControls } from "@/components/touch-controls";
 import { Pause, Play } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { botName } from "@/game/bots";
 import { RimeEngine, type HudSnap } from "@/game/engine";
 import { t } from "@/game/i18n";
 import { recordRun } from "@/game/save";
 import { displayName, useGame } from "@/game/store";
 import { clientId } from "@/lib/client-id";
-import { submitRun } from "@/lib/rime-data";
+import { submitRun, syncLocalSaveWithCloud } from "@/lib/rime-data";
 import type { BotSeed, GameResult, Mode, NetMsg, NetPlayer } from "@/game/types";
 import { dailySeed } from "@/game/world";
 
@@ -43,6 +43,11 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
   const [ready, setReady] = useState(false);
   const localId = net?.selfId ?? clientId();
   useLiveTower(engineRef, localId);
+
+  const handleMove = useCallback((x: number) => engineRef.current?.input.setTouch({ move: x }), []);
+  const handleJump = useCallback((d: boolean) => engineRef.current?.input.setTouch({ jump: d }), []);
+  const handlePower = useCallback((d: boolean) => engineRef.current?.input.setTouch({ power: d }), []);
+  const handleWeapon = useCallback((d: boolean) => engineRef.current?.input.setTouch({ weapon: d }), []);
 
   useEffect(() => {
     useGame.getState().setInRun(true);
@@ -85,7 +90,8 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
           if (h.floor !== useGame.getState().liveFloor) useGame.getState().setLiveFloor(h.floor);
         },
         onOver: (r: GameResult) => {
-          const next = recordRun(r.floor, r.score, r.combo);
+          const currentSave = useGame.getState().save;
+          const next = recordRun(r.floor, r.score, r.combo, currentSave);
           patchSave(next);
           setResult(r);
           void submitRun({
@@ -99,6 +105,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
               badges: next.badges,
             },
           }).catch(() => {});
+          void syncLocalSaveWithCloud();
         },
         sendState: net?.sendState,
         sendEvent: net?.sendEvent,
@@ -286,10 +293,10 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
           power={hud?.power ?? null}
           weapon={hud?.weapon ?? save.weapon ?? "blade"}
           ammo={Math.ceil(hud?.weaponT ?? 0)}
-          onMove={(x) => engineRef.current?.input.setTouch({ move: x })}
-          onJump={(d) => engineRef.current?.input.setTouch({ jump: d })}
-          onPower={(d) => engineRef.current?.input.setTouch({ power: d })}
-          onWeapon={(d) => engineRef.current?.input.setTouch({ weapon: d })}
+          onMove={handleMove}
+          onJump={handleJump}
+          onPower={handlePower}
+          onWeapon={handleWeapon}
         />
       )}
     </div>

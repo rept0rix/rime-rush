@@ -3,12 +3,13 @@ import { getSql, type Sql } from "@/lib/db";
 import type { PeerRow, RtcPollResponse, SignalRow } from "./p2p";
 
 const ID = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
+const TO_TARGET = z.string().regex(/^([a-zA-Z0-9_-]{1,64}|\*)$/);
 const signalSchema = z.object({
   op: z.literal("signal"),
   room: ID,
   from: ID,
-  to: ID,
-  kind: z.enum(["offer", "answer", "ice"]),
+  to: TO_TARGET,
+  kind: z.enum(["offer", "answer", "ice", "msg"]),
   payload: z.unknown().refine((v) => v !== undefined && JSON.stringify(v).length <= 32_768, {
     message: "payload too large",
   }),
@@ -118,7 +119,7 @@ async function handleGet(url: URL): Promise<Response> {
     payload: unknown;
   }>(
     `SELECT id, from_peer, kind, payload FROM webrtc_signals
-     WHERE room = $1 AND to_peer = $2 AND id > $3
+     WHERE room = $1 AND (to_peer = $2 OR to_peer = '*') AND from_peer <> $2 AND id > $3
      ORDER BY id LIMIT 200`,
     [room, peer, since],
   );
