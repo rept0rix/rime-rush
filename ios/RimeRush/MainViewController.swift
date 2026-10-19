@@ -239,13 +239,16 @@ class MainViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, 
         descLabel.textAlignment = .center
         descLabel.numberOfLines = 0
 
-        let retryButton = UIButton(type: .system)
-        retryButton.setTitle("Retry", for: .normal)
-        retryButton.titleLabel?.font = UIFont.systemFont(ofSize: 17, weight: .bold)
-        retryButton.setTitleColor(UIColor(red: 6/255.0, green: 16/255.0, blue: 24/255.0, alpha: 1.0), for: .normal)
-        retryButton.backgroundColor = UIColor(red: 126/255.0, green: 231/255.0, blue: 255/255.0, alpha: 1.0)
-        retryButton.layer.cornerRadius = 24
-        retryButton.contentEdgeInsets = UIEdgeInsets(top: 12, left: 32, bottom: 12, right: 32)
+        var config = UIButton.Configuration.filled()
+        config.baseBackgroundColor = UIColor(red: 126/255.0, green: 231/255.0, blue: 255/255.0, alpha: 1.0)
+        config.baseForegroundColor = UIColor(red: 6/255.0, green: 16/255.0, blue: 24/255.0, alpha: 1.0)
+        config.cornerStyle = .capsule
+        config.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 32, bottom: 12, trailing: 32)
+        var titleAttr = AttributedString("Retry")
+        titleAttr.font = UIFont.systemFont(ofSize: 17, weight: .bold)
+        config.attributedTitle = titleAttr
+
+        let retryButton = UIButton(configuration: config)
         retryButton.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
 
         stack.addArrangedSubview(titleLabel)
