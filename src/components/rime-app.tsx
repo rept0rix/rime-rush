@@ -12,6 +12,7 @@ import { MatchEnd } from "@/components/match-end";
 import { MuteButton } from "@/components/mute-button";
 import { NoteInbox } from "@/components/note-inbox";
 import { audioBus } from "@/game/audio";
+import { uiClick } from "@/game/haptics";
 import { dir, t } from "@/game/i18n";
 import { useGame } from "@/game/store";
 import type { GameResult } from "@/game/types";
@@ -112,6 +113,7 @@ function MatchEndGate({ result }: { result: GameResult }) {
   const replay = useGame((s) => s.replay);
 
   const onHome = () => {
+    uiClick();
     audioBus.setScene("off");
     setResult(null);
     setScreen("menu");
@@ -163,11 +165,17 @@ function Results() {
   }, [replay]);
 
   const goHome = () => {
+    uiClick();
     audioBus.setScene("off");
     setResult(null);
     setScreen("menu");
     useGame.getState().setRoom("");
     useGame.getState().setMode("solo");
+  };
+
+  const handleReplay = () => {
+    uiClick();
+    replay();
   };
 
   return (
@@ -250,7 +258,7 @@ function Results() {
           <button
             type="button"
             className="active:scale-95 transition-transform"
-            onClick={replay}
+            onClick={handleReplay}
           >
             <img src="/ui/play.png" alt="Play Again" className="h-14 w-auto object-contain drop-shadow-lg" />
           </button>

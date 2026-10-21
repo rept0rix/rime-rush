@@ -693,6 +693,12 @@ export class AudioBus {
     this.playHtml(this.htmlPing ?? this.htmlJump, 0.95);
   }
 
+  uiTap(): void {
+    if (this.muted) return;
+    this.unlock();
+    this.blip(640, 0.04, "sine", 0.08);
+  }
+
   clickOff(): void {
     this.unlock();
     this.slide(360, 90, 0.14, "sine", 0.14);

@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { StatusDot } from "@/components/status-dot";
 import { t } from "@/game/i18n";
+import { uiClick } from "@/game/haptics";
 import { getDashboard, listBoard, addFriend, type BoardRow } from "@/lib/rime-data";
 import { useGame } from "@/game/store";
 import { clientId } from "@/lib/client-id";
@@ -46,7 +47,14 @@ export function HubBoard() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-5 pt-4">
-      <button type="button" className="mb-2 self-start text-sm text-muted" onClick={() => setHub("home")}>
+      <button
+        type="button"
+        className="mb-2 self-start text-sm text-muted active:scale-95 transition"
+        onClick={() => {
+          uiClick();
+          setHub("home");
+        }}
+      >
         ← {copy.back}
       </button>
       <h1 className="arcade-title font-display text-4xl text-ice">{copy.tabBoard}</h1>

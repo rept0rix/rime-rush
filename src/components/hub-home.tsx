@@ -11,7 +11,7 @@ import { TouchControls } from "@/components/touch-controls";
 import { Pause, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { audioBus } from "@/game/audio";
-import { applyShake, applySound } from "@/game/haptics";
+import { applyShake, applySound, uiClick } from "@/game/haptics";
 import { RimeEngine, type HudSnap } from "@/game/engine";
 import { t } from "@/game/i18n";
 import { makeRoomCode } from "@/game/room";
@@ -85,6 +85,7 @@ export function HubHome() {
   };
 
   const startSolo = () => {
+    uiClick();
     if (!commitName()) return;
     audioBus.unlock();
     if (save.status === "waiting") patchSave({ status: "online" });
@@ -96,6 +97,7 @@ export function HubHome() {
   startRef.current = startSolo;
 
   const startBots = () => {
+    uiClick();
     if (!commitName()) return;
     audioBus.unlock();
     if (save.status === "waiting") patchSave({ status: "online" });
@@ -106,6 +108,7 @@ export function HubHome() {
   };
 
   const startRoom = () => {
+    uiClick();
     if (!commitName()) return;
     audioBus.unlock();
     if (save.status === "waiting") patchSave({ status: "online" });
@@ -236,8 +239,11 @@ export function HubHome() {
         <button
           type="button"
           aria-label={copy.profile}
-          onClick={() => setHub("me")}
-          className="flex items-center gap-2 rounded-full border border-line bg-[#140c08]/80 pr-3"
+          onClick={() => {
+            uiClick();
+            setHub("me");
+          }}
+          className="flex items-center gap-2 rounded-full border border-line bg-[#140c08]/80 pr-3 transition active:scale-95"
         >
           <span className="relative overflow-hidden rounded-full">
             <PlayerFace
@@ -259,10 +265,11 @@ export function HubHome() {
             type="button"
             aria-label="Board"
             onClick={() => {
+              uiClick();
               patchSave({ seenBoard: true });
               setHub("board");
             }}
-            className="relative"
+            className="relative transition active:scale-95"
           >
             <img src="/ui/tab-board.png" alt="Board" className="h-12 w-12 object-contain" />
             {!save.seenBoard && <span className="absolute top-0 right-0 size-3 rounded-full bg-rose" />}

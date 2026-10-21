@@ -7,7 +7,8 @@ import { FacebookMark, GoogleMark, SocialButtons, TikTokMark, XMark } from "@/co
 import { StatusDot, statusLabel } from "@/components/status-dot";
 import { StatusPicker } from "@/components/status-picker";
 import { BADGES, badgeHint, badgeName } from "@/game/achievements";
-import { applyShake, applySound } from "@/game/haptics";
+import { audioBus } from "@/game/audio";
+import { applyShake, applySound, hapticFeedback, uiClick } from "@/game/haptics";
 import { t } from "@/game/i18n";
 import { rankName } from "@/game/ranks";
 import { makeRoomCode } from "@/game/room";
@@ -92,11 +93,17 @@ export function HubProfile() {
 
   const buySkin = (i: number) => {
     if (save.ownedSkins.includes(i)) {
+      uiClick();
       patchSave({ color: i });
       return;
     }
     const price = SKIN_PRICE[i] ?? 0;
-    if (save.coins < price) return;
+    if (save.coins < price) {
+      hapticFeedback("warning");
+      return;
+    }
+    audioBus.ping();
+    hapticFeedback("success");
     patchSave({
       coins: save.coins - price,
       ownedSkins: [...save.ownedSkins, i],
@@ -106,10 +113,16 @@ export function HubProfile() {
 
   const buyWeapon = (id: WeaponId, price: number) => {
     if (save.ownedWeapons.includes(id)) {
+      uiClick();
       patchSave({ weapon: id });
       return;
     }
-    if (save.coins < price) return;
+    if (save.coins < price) {
+      hapticFeedback("warning");
+      return;
+    }
+    audioBus.ping();
+    hapticFeedback("success");
     patchSave({
       coins: save.coins - price,
       ownedWeapons: [...save.ownedWeapons, id],
@@ -119,7 +132,14 @@ export function HubProfile() {
 
   return (
     <div data-arcade-root className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3 pb-6">
-      <button type="button" className="mb-2 self-start text-sm text-muted" onClick={() => setHub("home")}>
+      <button
+        type="button"
+        className="mb-2 self-start text-sm text-muted active:scale-95 transition"
+        onClick={() => {
+          uiClick();
+          setHub("home");
+        }}
+      >
         ← {copy.back}
       </button>
 

@@ -3,6 +3,7 @@ import { GameView } from "@/components/game-view";
 import { MatchEnd } from "@/components/match-end";
 import { StatusDot } from "@/components/status-dot";
 import { audioBus } from "@/game/audio";
+import { uiClick } from "@/game/haptics";
 import { makeRoomCode, roomId } from "@/game/room";
 import { botName } from "@/game/bots";
 import { outfitAccent } from "@/game/outfits";
@@ -21,6 +22,7 @@ export function inviteUrl(code: string): string {
 }
 
 function leaveToMenu(): void {
+  uiClick();
   const s = useGame.getState();
   s.setRoom("");
   s.setJoining(false);
@@ -195,6 +197,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
   while (seats.length < 4) seats.push({ kind: "empty" });
 
   const startMatch = () => {
+    uiClick();
     const bots: BotSeed[] = [];
     if (fillBots) {
       const need = Math.max(0, 4 - (1 + others.filter((o) => o.ready).length));
@@ -250,6 +253,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
         <button
           type="button"
           onClick={async () => {
+            uiClick();
             const res = await findOrCreatePublicRoom({
               data: { clientId: clientId(), name, mode: mpMode },
             });
@@ -258,21 +262,27 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
               useGame.getState().setJoining(!res.isHost);
             }
           }}
-          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] font-display text-xs text-gold active:scale-95"
+          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] font-display text-xs text-gold active:scale-95 transition"
         >
           QUICK MATCH
         </button>
         <button
           type="button"
-          onClick={() => void share()}
-          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] font-display text-xs text-ice active:scale-95"
+          onClick={() => {
+            uiClick();
+            void share();
+          }}
+          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] font-display text-xs text-ice active:scale-95 transition"
         >
           INVITE
         </button>
         <button
           type="button"
-          onClick={() => void copyLink()}
-          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] text-xs font-bold text-ice active:scale-95"
+          onClick={() => {
+            uiClick();
+            void copyLink();
+          }}
+          className="h-11 rounded-xl border-2 border-[#5a3a20] bg-[#2a1c14] text-xs font-bold text-ice active:scale-95 transition"
         >
           {copied === "link" ? "COPIED" : "COPY"}
         </button>
@@ -291,6 +301,7 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
                 <button
                   type="button"
                   onClick={() => {
+                    uiClick();
                     useGame.getState().setRoom(r.room);
                     useGame.getState().setJoining(true);
                   }}

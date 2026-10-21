@@ -46,6 +46,30 @@ export function rumble(pat: number | number[] = 24): void {
   }
 }
 
+export type HapticType = "light" | "medium" | "heavy" | "success" | "warning" | "error" | "selection";
+
+export function hapticFeedback(type: HapticType = "light"): void {
+  try {
+    if (typeof window === "undefined") return;
+    const webkit = (window as unknown as { webkit?: { messageHandlers?: { haptics?: { postMessage: (msg: string) => void } } } }).webkit;
+    if (webkit?.messageHandlers?.haptics) {
+      webkit.messageHandlers.haptics.postMessage(type);
+      return;
+    }
+    if (type === "heavy" || type === "error") rumble(45);
+    else if (type === "medium" || type === "warning") rumble(28);
+    else if (type === "success") rumble([20, 30, 40]);
+    else rumble(16);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function uiClick(): void {
+  audioBus.uiTap();
+  hapticFeedback("selection");
+}
+
 const SHAKE_MS = 720;
 
 export function bumpShake(root?: Element | null): void {
