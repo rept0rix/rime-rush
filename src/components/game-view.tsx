@@ -197,7 +197,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
       )}
 
       {hud?.hint && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-[132px] z-30 flex justify-center px-5">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(132px+env(safe-area-inset-bottom))] z-30 flex justify-center px-5">
           <p className="rounded-2xl bg-bg/75 px-3 py-1.5 text-center text-xs font-medium text-ice">
             {hud.hint}
           </p>
