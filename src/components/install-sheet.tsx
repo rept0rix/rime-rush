@@ -9,7 +9,10 @@ function isIos(): boolean {
 
 function isNativeOrStandalone(): boolean {
   if (typeof window === "undefined") return false;
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
   return (
+    ua.includes("RimeRush-Android") ||
+    ua.includes("RimeRush-iOS") ||
     !!(window as any).webkit?.messageHandlers ||
     !!(window.navigator as any).standalone ||
     (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches)

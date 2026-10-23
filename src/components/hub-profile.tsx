@@ -3,7 +3,7 @@ import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user
 import { ArcadeConfirm } from "@/components/arcade-confirm";
 import { FeelTiles, PlaqueBtn } from "@/components/feel-tiles";
 import { PlayerFace } from "@/components/player-face";
-import { FacebookMark, GoogleMark, SocialButtons, TikTokMark, XMark } from "@/components/social-buttons";
+import { GoogleMark, SocialButtons, XMark } from "@/components/social-buttons";
 import { StatusDot, statusLabel } from "@/components/status-dot";
 import { StatusPicker } from "@/components/status-picker";
 import { BADGES, badgeHint, badgeName } from "@/game/achievements";
@@ -206,11 +206,11 @@ export function HubProfile() {
           />
           <PlaqueBtn
             src="/ui/set-home.jpg"
-            label={typeof navigator !== "undefined" && (navigator.userAgent.includes("RimeRush-iOS") || Boolean((window as any).webkit?.messageHandlers?.haptics)) ? "SYNC" : "HOME"}
+            label={typeof navigator !== "undefined" && (navigator.userAgent.includes("RimeRush-iOS") || navigator.userAgent.includes("RimeRush-Android") || Boolean((window as any).webkit?.messageHandlers?.haptics)) ? "SYNC" : "HOME"}
             tone="ice"
             testId="feel-home"
             onFire={async () => {
-              const isNative = typeof navigator !== "undefined" && (navigator.userAgent.includes("RimeRush-iOS") || Boolean((window as any).webkit?.messageHandlers?.haptics));
+              const isNative = typeof navigator !== "undefined" && (navigator.userAgent.includes("RimeRush-iOS") || navigator.userAgent.includes("RimeRush-Android") || Boolean((window as any).webkit?.messageHandlers?.haptics));
               if (isNative) {
                 await syncLocalSaveWithCloud();
               } else {
@@ -302,7 +302,7 @@ export function HubProfile() {
           ) : signedIn ? (
             <div className="flex flex-col items-center gap-2">
               <p className="text-center text-xs font-bold text-mint">
-                Connected as {user?.displayName ?? user?.email ?? "you"}
+                Connected as {user?.displayName ?? user?.primaryEmail ?? "you"}
               </p>
               <button
                 type="button"

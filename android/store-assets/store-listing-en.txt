@@ -1,0 +1,46 @@
+================================================================================
+RIME RUSH - Google Play Store Listing (English)
+================================================================================
+
+[App Name] (Max 30 characters)
+Rime Rush
+
+[Short Description] (Max 80 characters)
+Arcade vertical climber. Dodge icicles, leap ledges, rush to the top!
+
+[Full Description] (Max 4000 characters)
+Ascend the frozen monolith in RIME RUSH — the high-intensity vertical climbing arcade game!
+
+Test your reflexes against the collapsing frost tower. Leap between brittle icy ledges, dodge falling icicles and hostile tundra hazards, and climb floor after floor in an endless rush for the ultimate summit score.
+
+🌟 KEY FEATURES:
+
+⚡ RAPID-FIRE VERTICAL CLIMBING
+Tight, responsive touch controls designed specifically for mobile. Tap and swipe to dash, wall-kick, and leap upward before the ice beneath your feet shatters.
+
+🧗 EXPANSIVE CLIMBER ROSTER
+Unlock over 12 unique climbers, custom scarf patterns, and distinctive color palettes. Equip weapons and gear to carve your path up the tower.
+
+❄️ DYNAMIC FROST HAZARDS
+Navigate through crumbling ledges, blizzard winds, falling hazards, and procedural obstacles that test your precision and timing on every ascent.
+
+👥 REALTIME MULTIPLAYER & LEADERBOARDS
+Compete against friends and global climbers in realtime matchmaking lobbies. Climb the global rankings, collect badges, and prove who rules the frost.
+
+📱 OPTIMIZED FOR MOBILE
+Seamless 60fps performance, immersive full-screen gameplay, haptic feedback, and battery-friendly architecture. Play solo offline or connect online to sync your progress across devices.
+
+Are you ready to beat the frost? Download Rime Rush today and start your climb!
+
+--------------------------------------------------------------------------------
+[App Category]
+Games > Arcade / Action
+
+[Content Rating]
+Everyone / 3+ (PEGI 3, ESRB Everyone)
+
+[Privacy Policy URL]
+https://rime-rush.vercel.app/privacy.html
+
+[Support Email]
+na0ryank0@gmail.com
