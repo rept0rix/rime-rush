@@ -413,6 +413,7 @@ export function HubHome() {
         <ContinueOffer
           coins={save.coins}
           cost={hud.reviveCost}
+          cause={hud.deathCause}
           left={hud.continueLeft}
           onRevive={() => {
             if (save.coins < hud.reviveCost) return;

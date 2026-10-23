@@ -250,6 +250,7 @@ export function GameView({ mode, seed, bots = [], net }: Props) {
         <ContinueOffer
           coins={save.coins}
           cost={hud.reviveCost}
+          cause={hud.deathCause}
           left={hud.continueLeft}
           onRevive={() => {
             if (save.coins < hud.reviveCost) return;

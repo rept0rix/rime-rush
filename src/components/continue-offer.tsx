@@ -1,13 +1,16 @@
 import { MuteButton } from "@/components/mute-button";
+import { deathCauseLine, type DeathCause } from "@/game/types";
 export function ContinueOffer({
   coins,
   cost,
+  cause,
   left,
   onRevive,
   onSkip,
 }: {
   coins: number;
   cost: number;
+  cause?: DeathCause | null;
   left: number;
   onRevive: () => void;
   onSkip: () => void;
@@ -19,18 +22,24 @@ export function ContinueOffer({
         <MuteButton />
       </div>
       <p className="font-display text-4xl text-gold">CONTINUE?</p>
-      <p className="text-xs text-muted">{left.toFixed(1)}s</p>
+      <p className="mt-1 max-w-[280px] text-center text-sm font-semibold text-ice">{deathCauseLine(cause)}</p>
+      <p className="mt-1 text-xs tabular-nums text-muted">{left.toFixed(1)}s left</p>
       <button
         type="button"
         disabled={!ok}
         onClick={onRevive}
-        className={`mt-2 h-11 w-48 rounded-lg font-display text-xl ${ok ? "bg-gold text-bg" : "bg-line text-muted"}`}
+        className={`mt-3 h-12 w-60 rounded-xl font-display text-lg active:scale-95 ${ok ? "bg-gold text-bg" : "bg-line text-muted"}`}
       >
-        {ok ? `REVIVE  ${cost}` : `NEED ${cost}`}
+        {ok ? `REVIVE · ${cost} coins` : `NEED ${cost} coins (you have ${coins})`}
       </button>
-      <button type="button" onClick={onSkip} className="mt-2 text-[11px] text-muted underline">
-        Let me fall · {coins} coins
+      <button
+        type="button"
+        onClick={onSkip}
+        className="mt-3 h-11 w-60 rounded-xl border border-ice/35 bg-bg/70 font-display text-base text-ice active:scale-95"
+      >
+        PLAY AGAIN
       </button>
+      <p className="mt-2 text-[11px] text-muted">You have {coins} coins</p>
     </div>
   );
 }

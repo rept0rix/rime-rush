@@ -240,3 +240,17 @@ export interface SaveData {
   alerts: boolean;
   coachLeft: number;
 }
+
+export type DeathCause = "fell" | "rat" | "bat" | "ember" | "raider" | "hazard";
+
+export function deathCauseLine(c: DeathCause | null | undefined): string {
+  switch (c) {
+    case "rat": return "A rat got you.";
+    case "bat": return "A bat got you.";
+    case "ember": return "An ember burned you.";
+    case "raider": return "A raider took you down.";
+    case "hazard": return "Hazard hit you.";
+    case "fell": return "You fell off the screen.";
+    default: return "You went down.";
+  }
+}
