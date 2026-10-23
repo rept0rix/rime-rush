@@ -302,7 +302,7 @@ export function HubProfile() {
           ) : signedIn ? (
             <div className="flex flex-col items-center gap-2">
               <p className="text-center text-xs font-bold text-mint">
-                Connected as {user?.displayName ?? user?.email ?? "you"}
+                Connected as {user?.displayName ?? user?.primaryEmail ?? "you"}
               </p>
               <button
                 type="button"

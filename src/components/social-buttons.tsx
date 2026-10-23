@@ -225,3 +225,19 @@ export function XMark() {
     </svg>
   );
 }
+
+export function FacebookMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden>
+      <path d="M13.5 21v-7.5h2.5l.4-3h-2.9V8.6c0-.9.3-1.5 1.5-1.5h1.5V4.4c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2.4H8v3h2.6V21h2.9z" />
+    </svg>
+  );
+}
+
+export function TikTokMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden>
+      <path d="M16.6 3c.3 2.2 1.6 3.6 3.9 3.8v2.6c-1.4.1-2.6-.3-3.9-1.1v5.6c0 6.4-7 8.4-9.8 3.8-1.8-3-.7-8.2 5.2-8.4v2.8c-.5.1-1 .2-1.4.4-1.3.4-2 1.3-1.8 2.8.4 2.7 5.3 3.5 4.9-1.8V3h2.9z" />
+    </svg>
+  );
+}
