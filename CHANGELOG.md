@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [v0.3.8]
+### Security
+- TanStack Start XSS fix confirmed: `@tanstack/react-start` 1.168.60 (`@tanstack/start-server-core` 1.169.39).
+### Fixes
+- `/privacy` and `/support` (no `.html`) now return the static pages via CDN rewrites.
+- Clearer continue screen: short death cause (fell / rat / bat / ember / raider / hazard), `REVIVE · N coins` and a PLAY AGAIN button.
+- Coach hint sits above the phone safe-area bottom (touch pads, HUD row and results already respect it).
+
 ## [v0.3.7]
 - Visible touch pads on touch/narrow screens: ◀ LEFT, ▶ RIGHT (left thumb), ATK and a big ▲ JUMP (right thumb). Jump is now wired on touch.
 - First-PLAY coach line says how to jump on touch and keyboard; moved above the pads.
