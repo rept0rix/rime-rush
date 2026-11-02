@@ -645,7 +645,7 @@ export class RimeEngine {
 		const actions = this.input.sample();
 		if (actions.pausePressed && !this.attract) this.paused = !this.paused;
 		if (this.attract) {
-			if (actions.jumpPressed || actions.powerPressed || actions.weaponPressed) {
+			if (actions.jumpPressed || actions.powerPressed || actions.weaponPressed || actions.moveX !== 0) {
 				this.hooks.onAttractStart?.();
 			}
 			const p = this.local();

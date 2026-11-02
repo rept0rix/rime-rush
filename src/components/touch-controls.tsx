@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useRef, useState } from "react";
 import { audioBus } from "@/game/audio";
 import type { PowerId, WeaponId } from "@/game/types";
 
@@ -19,45 +19,16 @@ interface TouchRipple {
   zone: "left" | "center" | "right";
 }
 
-function useTouchUi(): boolean {
-  const check = () => {
-    if (typeof window === "undefined") return false;
-    if (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0) return true;
-    if (/iPad|iPhone|iPod|Android/i.test(navigator.userAgent)) return true;
-    if (typeof window.matchMedia === "function") {
-      return window.matchMedia("(pointer: coarse), (max-width: 1024px)").matches;
-    }
-    return false;
-  };
-
-  const [on, setOn] = useState(check);
-  useEffect(() => {
-    setOn(check());
-    const mq = window.matchMedia?.("(pointer: coarse)");
-    const sync = () => setOn(check());
-    mq?.addEventListener?.("change", sync);
-    window.addEventListener?.("resize", sync);
-    return () => {
-      mq?.removeEventListener?.("change", sync);
-      window.removeEventListener?.("resize", sync);
-    };
-  }, []);
-  return on;
-}
-
 export const TouchControls = memo(function TouchControls({
-  power,
-  ammo,
   onMove,
   onJump,
   onPower,
   onWeapon,
 }: Props) {
-  const show = useTouchUi();
   const containerRef = useRef<HTMLDivElement>(null);
-  const activePointers = useRef<Map<number, { x: number; y: number; zone: "left" | "center" | "right" }>>(
-    new Map(),
-  );
+  const activePointers = useRef<
+    Map<number, { x: number; y: number; startY: number; zone: "left" | "center" | "right" }>
+  >(new Map());
   const lastTapTime = useRef<number>(0);
   const [ripples, setRipples] = useState<TouchRipple[]>([]);
   const rippleSeq = useRef(0);
@@ -68,8 +39,8 @@ export const TouchControls = memo(function TouchControls({
     const relX = clientX - (rect?.left || 0);
     const ratio = relX / width;
 
-    if (ratio < 0.38) return "left";
-    if (ratio > 0.62) return "right";
+    if (ratio < 0.46) return "left";
+    if (ratio > 0.54) return "right";
     return "center";
   };
 
@@ -103,19 +74,31 @@ export const TouchControls = memo(function TouchControls({
 
   const handlePointerDown = (e: React.PointerEvent) => {
     audioBus.unlock();
+    try {
+      (e.currentTarget as HTMLElement)?.setPointerCapture?.(e.pointerId);
+    } catch {}
 
-    // Double tap anywhere on screen triggers weapon attack
     const now = Date.now();
-    if (now - lastTapTime.current < 260) {
+    // Multi-touch attack: 2 or more fingers down = immediate attack
+    if (activePointers.current.size >= 1) {
       onWeapon(true);
-      window.setTimeout(() => onWeapon(false), 80);
+      window.setTimeout(() => onWeapon(false), 90);
+    } else if (now - lastTapTime.current < 280) {
+      // Double tap anywhere on screen triggers attack
+      onWeapon(true);
+      window.setTimeout(() => onWeapon(false), 90);
       lastTapTime.current = 0;
     } else {
       lastTapTime.current = now;
     }
 
     const zone = getZone(e.clientX);
-    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, zone });
+    activePointers.current.set(e.pointerId, {
+      x: e.clientX,
+      y: e.clientY,
+      startY: e.clientY,
+      zone,
+    });
 
     const rect = containerRef.current?.getBoundingClientRect();
     const localX = e.clientX - (rect?.left || 0);
@@ -126,9 +109,23 @@ export const TouchControls = memo(function TouchControls({
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!activePointers.current.has(e.pointerId)) return;
+    const existing = activePointers.current.get(e.pointerId);
+    if (!existing) return;
+
+    // Swipe up triggers Power
+    if (existing.startY - e.clientY > 50) {
+      onPower(true);
+      window.setTimeout(() => onPower(false), 100);
+      existing.startY = e.clientY; // Reset swipe tracker
+    }
+
     const zone = getZone(e.clientX);
-    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, zone });
+    activePointers.current.set(e.pointerId, {
+      ...existing,
+      x: e.clientX,
+      y: e.clientY,
+      zone,
+    });
     syncStateFromPointers();
   };
 
@@ -142,28 +139,11 @@ export const TouchControls = memo(function TouchControls({
     syncStateFromPointers();
   };
 
-  const triggerAttack = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    audioBus.unlock();
-    onWeapon(true);
-    window.setTimeout(() => onWeapon(false), 80);
-  };
-
-  const triggerPower = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    audioBus.unlock();
-    onPower(true);
-    window.setTimeout(() => onPower(false), 80);
-  };
-
-  if (!show) return null;
-
   return (
     <div
       ref={containerRef}
       className="pointer-events-auto absolute inset-0 z-20 select-none touch-none overflow-hidden"
+      style={{ touchAction: "none" }}
       dir="ltr"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -171,11 +151,11 @@ export const TouchControls = memo(function TouchControls({
       onPointerCancel={handlePointerCancel}
       onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Subtle, soft touch feedback ripples under finger */}
+      {/* Soft ice ripples under finger - Zero buttons, 100% immersive fullscreen touch */}
       {ripples.map((r) => (
         <span
           key={r.id}
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-ice/50 bg-ice/15 animate-ping duration-300"
+          className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-ice/40 bg-ice/10 animate-ping duration-300"
           style={{
             left: r.x,
             top: r.y,
@@ -184,43 +164,6 @@ export const TouchControls = memo(function TouchControls({
           }}
         />
       ))}
-
-      {/* Discreet, non-intrusive action controls in lower corners - only when needed */}
-      <div className="pointer-events-none absolute inset-x-3 bottom-[max(12px,env(safe-area-inset-bottom))] z-30 flex items-end justify-between">
-        {/* Subtle touch hints on screen edge */}
-        <div className="flex items-center gap-1 opacity-25 pointer-events-none text-[10px] font-bold text-ice tracking-wider">
-          <span>◀ LEFT</span>
-        </div>
-
-        {/* Minimalist Floating Action Controls (Attack & Power) */}
-        <div className="pointer-events-auto flex items-center gap-2.5">
-          {power && power !== "blade" && (
-            <button
-              type="button"
-              aria-label="Power"
-              onClick={triggerPower}
-              className="flex size-11 items-center justify-center rounded-full border border-gold/70 bg-[#160c08]/85 text-gold shadow-md backdrop-blur-xs active:scale-90"
-            >
-              <span className="font-display text-xs font-black">POW</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            aria-label="Attack"
-            onClick={triggerAttack}
-            className="flex size-11 items-center justify-center rounded-full border border-rose/70 bg-[#160c08]/85 text-rose shadow-md backdrop-blur-xs active:scale-90"
-          >
-            <span className="font-display text-xs font-bold">
-              {ammo > 0 ? `×${ammo}` : "ATK"}
-            </span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1 opacity-25 pointer-events-none text-[10px] font-bold text-ice tracking-wider">
-          <span>RIGHT ▶</span>
-        </div>
-      </div>
     </div>
   );
 });

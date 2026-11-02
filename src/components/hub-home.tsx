@@ -233,6 +233,9 @@ export function HubHome() {
         className="absolute inset-0 h-full w-full touch-none"
         style={{ touchAction: "none" }}
         onContextMenu={(e) => e.preventDefault()}
+        onClick={() => {
+          if (!live && !result && !askName) startSolo();
+        }}
       />
 
       <div className={`absolute inset-x-0 top-0 z-30 flex items-start justify-between px-3 pt-[max(8px,env(safe-area-inset-top))] ${live || result ? "chrome-out" : ""}`}>

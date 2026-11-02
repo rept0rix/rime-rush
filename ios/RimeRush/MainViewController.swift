@@ -87,8 +87,17 @@ class MainViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, 
     private func loadGame() {
         loadingIndicator.startAnimating()
         hideOfflineView()
-        let request = URLRequest(url: Self.appURL, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 20.0)
-        webView.load(request)
+
+        let cacheTypes: Set<String> = [
+            WKWebsiteDataTypeDiskCache,
+            WKWebsiteDataTypeMemoryCache,
+            WKWebsiteDataTypeOfflineWebApplicationCache
+        ]
+        WKWebsiteDataStore.default().removeData(ofTypes: cacheTypes, modifiedSince: Date.distantPast) { [weak self] in
+            guard let self = self else { return }
+            let request = URLRequest(url: Self.appURL, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 30.0)
+            self.webView.load(request)
+        }
     }
 
     // MARK: - WKScriptMessageHandler (Haptics & Notifications Bridges)

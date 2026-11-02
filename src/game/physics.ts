@@ -152,7 +152,9 @@ export function stepPlayer(
       p.vx += input.moveX * a * dt;
       p.facing = input.moveX > 0 ? 1 : -1;
     } else {
-      const brake = F.BRAKING * air * dt;
+      // In the air, preserve momentum (minimal drag) so leaps across platforms don't stall mid-jump
+      const airDrag = inAir ? 0.08 : 1;
+      const brake = F.BRAKING * airDrag * dt;
       if (Math.abs(p.vx) <= brake) p.vx = 0;
       else p.vx -= Math.sign(p.vx) * brake;
     }
