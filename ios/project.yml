@@ -26,6 +26,8 @@ targets:
     info:
       path: RimeRush/Info.plist
       properties:
+        CFBundleVersion: "2"
+        CFBundleShortVersionString: "1.0.0"
         CFBundleDisplayName: "RIME RUSH"
         ITSAppUsesNonExemptEncryption: false
         LSRequiresIPhoneOS: true

@@ -38,6 +38,12 @@ class MainViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, 
         mediumImpact.prepare()
         heavyImpact.prepare()
         notificationFeedback.prepare()
+
+        NotificationCenter.default.addObserver(self, selector: #selector(applicationWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+    }
+
+    @objc private func applicationWillEnterForeground() {
+        loadGame()
     }
 
     private func setupWebView() {

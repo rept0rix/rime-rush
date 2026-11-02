@@ -236,6 +236,12 @@ export function HubHome() {
         onClick={() => {
           if (!live && !result && !askName) startSolo();
         }}
+        onPointerDown={() => {
+          if (!live && !result && !askName) {
+            audioBus.unlock();
+            startSolo();
+          }
+        }}
       />
 
       <div className={`absolute inset-x-0 top-0 z-30 flex items-start justify-between px-3 pt-[max(8px,env(safe-area-inset-top))] ${live || result ? "chrome-out" : ""}`}>
@@ -291,14 +297,32 @@ export function HubHome() {
             {climbers.length ? ` · ${climbers.slice(0, 3).join(", ")} climbing` : " · live tower"}
           </p>
           {!live && !result && (
-            <button
-              type="button"
-              aria-label={copy.play}
-              onClick={startSolo}
-              className="pointer-events-auto mt-6 active:scale-95"
-            >
-              <img src="/ui/play.png" alt="Play" className="h-20 w-auto object-contain drop-shadow-lg" />
-            </button>
+            <div className="pointer-events-auto mt-6 flex flex-col items-center gap-3">
+              <button
+                type="button"
+                aria-label={copy.play}
+                onClick={startSolo}
+                className="active:scale-95 transition-transform"
+              >
+                <img src="/ui/play.png" alt="Play" className="h-20 w-auto object-contain drop-shadow-lg" />
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={startBots}
+                  className="rounded-full border border-gold/60 bg-[#160c08]/90 px-3 py-1 text-xs font-bold text-gold shadow-md active:scale-95"
+                >
+                  🤖 Bots
+                </button>
+                <button
+                  type="button"
+                  onClick={startRoom}
+                  className="rounded-full border border-mint/60 bg-[#160c08]/90 px-3 py-1 text-xs font-bold text-mint shadow-md active:scale-95"
+                >
+                  Room ({online})
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -325,36 +349,7 @@ export function HubHome() {
         </div>
       )}
 
-      {!askName && !live && !result && (
-        <div className="absolute inset-x-3 bottom-[max(12px,env(safe-area-inset-bottom))] z-30 flex items-end justify-between">
-          <button
-            type="button"
-            aria-label="VS Bots"
-            onClick={startBots}
-            className="flex flex-col items-center"
-          >
-            <span className="flex items-center gap-1.5 rounded-full border-2 border-gold/70 bg-[#1a100c]/90 px-3.5 py-2.5 shadow-lg active:scale-95">
-              <span className="font-display text-base font-bold text-gold">🤖 BOTS</span>
-            </span>
-            <span className="mt-1 text-[10px] font-bold text-muted">Practice</span>
-          </button>
 
-          <button
-            type="button"
-            aria-label="Room"
-            onClick={startRoom}
-            className="flex flex-col items-center"
-          >
-            <span className="relative block">
-              <img src="/ui/room.png" alt="Room" className="h-14 w-auto object-contain drop-shadow-lg active:scale-95" />
-              <span className="absolute -top-1 -left-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-mint px-1.5 text-[10px] font-bold text-bg">
-                {online}
-              </span>
-            </span>
-            <span className="mt-0.5 block text-center text-[10px] font-bold text-ice">{online} online</span>
-          </button>
-        </div>
-      )}
 
       {live && hud && (
         <div className="hud-in pointer-events-none absolute inset-x-0 top-0 z-40 px-2 pt-[max(8px,env(safe-area-inset-top))]">
