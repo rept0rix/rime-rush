@@ -34,6 +34,15 @@ mkdir -p "$BUILD_DIR" "$EXPORT_PATH"
 
 # 2. Archive
 echo "📦 Archiving RimeRush (Release configuration)..."
+AUTH_ARGS=()
+if [ -n "${APP_STORE_CONNECT_KEY_ID:-}" ] && [ -n "${APP_STORE_CONNECT_ISSUER_ID:-}" ] && [ -f "$HOME/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8" ]; then
+  AUTH_ARGS=(
+    -authenticationKeyPath "$HOME/.private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+    -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID"
+    -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
+  )
+fi
+
 xcodebuild \
   -project RimeRush.xcodeproj \
   -scheme RimeRush \
@@ -41,7 +50,8 @@ xcodebuild \
   -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE_PATH" \
   archive \
-  -allowProvisioningUpdates
+  -allowProvisioningUpdates \
+  "${AUTH_ARGS[@]}"
 
 echo "✅ Archive created at: $ARCHIVE_PATH"
 
@@ -52,7 +62,8 @@ xcodebuild \
   -archivePath "$ARCHIVE_PATH" \
   -exportOptionsPlist "$EXPORT_OPTIONS" \
   -exportPath "$EXPORT_PATH" \
-  -allowProvisioningUpdates
+  -allowProvisioningUpdates \
+  "${AUTH_ARGS[@]}"
 
 IPA_FILE="$EXPORT_PATH/RimeRush.ipa"
 if [ ! -f "$IPA_FILE" ]; then

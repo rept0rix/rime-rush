@@ -11,16 +11,39 @@ import {
   type LiveClimber,
 } from "@/lib/rime-data";
 
-const CABINET_MQ = "(min-width: 1000px)";
-
 function useCabinet(): boolean {
   const [on, setOn] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia(CABINET_MQ);
-    const apply = () => setOn(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
+    const check = () => {
+      if (typeof window === "undefined") return false;
+
+      // Never use cabinet on touch devices, tablets (iPads), or inside native mobile wrapper
+      const isTouch =
+        (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0) ||
+        /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) ||
+        (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+
+      const isNativeApp =
+        typeof navigator !== "undefined" &&
+        (navigator.userAgent.includes("NativeApp") || navigator.userAgent.includes("RimeRush-iOS"));
+
+      if (isTouch || isNativeApp) return false;
+
+      // Only on desktop screens with mouse/keyboard
+      const mq = window.matchMedia("(min-width: 1100px) and (hover: hover) and (pointer: fine)");
+      return mq.matches;
+    };
+
+    const update = () => setOn(check());
+    update();
+
+    const mq = window.matchMedia("(min-width: 1100px)");
+    mq.addEventListener?.("change", update);
+    window.addEventListener?.("resize", update);
+    return () => {
+      mq.removeEventListener?.("change", update);
+      window.removeEventListener?.("resize", update);
+    };
   }, []);
   return on;
 }
@@ -29,7 +52,7 @@ export function PhoneStage({ children }: { children: ReactNode }) {
   const cabinet = useCabinet();
 
   return (
-    <div className="phone-cabinet">
+    <div className={`phone-cabinet ${cabinet ? "is-cabinet" : "is-fullbleed"}`}>
       <div className="phone-cabinet-art" aria-hidden />
       <aside className="phone-rail phone-rail-left" aria-hidden={!cabinet}>
         {cabinet && <TowerRail />}

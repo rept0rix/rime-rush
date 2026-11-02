@@ -474,8 +474,8 @@
     inset 0 1px 0 rgb(255 244 220 / 0.12);
 }
 
-@media (min-width: 1000px) {
-  .phone-cabinet {
+@media (min-width: 1100px) and (hover: hover) and (pointer: fine) {
+  .phone-cabinet.is-cabinet {
     --rail: 280px;
     --gap: 18px;
     --vpad: 14px;
@@ -496,11 +496,11 @@
     box-sizing: border-box;
   }
 
-  .phone-cabinet-art {
+  .phone-cabinet.is-cabinet .phone-cabinet-art {
     opacity: 1;
   }
 
-  .phone-frame {
+  .phone-cabinet.is-cabinet .phone-frame {
     flex: none;
     width: var(--phone-w);
     height: var(--phone-h);
@@ -519,11 +519,11 @@
       0 0 42px rgb(126 231 255 / 0.28);
   }
 
-  .phone-screen {
+  .phone-cabinet.is-cabinet .phone-screen {
     box-shadow: inset 0 0 28px rgb(126 231 255 / 0.1);
   }
 
-  .phone-rail {
+  .phone-cabinet.is-cabinet .phone-rail {
     display: flex;
     flex-direction: column;
     z-index: 2;
@@ -536,12 +536,12 @@
     align-self: end;
   }
 
-  .phone-rail-left {
+  .phone-cabinet.is-cabinet .phone-rail-left {
     justify-self: end;
     align-items: stretch;
   }
 
-  .phone-rail-right {
+  .phone-cabinet.is-cabinet .phone-rail-right {
     justify-self: start;
     align-items: stretch;
   }

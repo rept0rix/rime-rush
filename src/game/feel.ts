@@ -2,23 +2,23 @@
 
 export const F = {
   MAX_SPEED: 280,
-  ACCEL: 1180,
-  BRAKING: 980,
-  REVERSE: 2100,
-  AIR_CONTROL: 0.48,
+  ACCEL: 920,
+  BRAKING: 860,
+  REVERSE: 1600,
+  AIR_CONTROL: 0.62,
   FRICTION: 0.993,
   AIR_DRAG: 0.9996,
 
   BASE_JUMP: 740,
   MIN_JUMP: 640,
-  MAX_JUMP: 1220,
-  SPEED_TO_JUMP: 1.5,
-  GRAVITY: 1380,
+  MAX_JUMP: 1100,
+  SPEED_TO_JUMP: 1.25,
+  GRAVITY: 1350,
   TERM_VEL: 920,
-  COYOTE: 0.26,
-  JUMP_BUF: 0.3,
+  COYOTE: 0.28,
+  JUMP_BUF: 0.32,
 
-  WALL_BOUNCE: 0.82,
+  WALL_BOUNCE: 0.68,
   WALL_BOOST: 0,
   WALL_LOCK: 0.08,
 
@@ -32,8 +32,8 @@ export const F = {
   SCROLL_INTERVAL: 40,
   DEATH_PAD: 52,
   SPAWN_PROTECT: 2.0,
-  CAM_FOLLOW: 8.5,
-  CAM_LOOKAHEAD: 0.12,
+  CAM_FOLLOW: 5.2,
+  CAM_LOOKAHEAD: 0.0,
 
   /** Visual juice — squash/stretch + brief hitstop (draw-only; not hitbox). */
   LAND_SQUASH: 0.46,

@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { audioBus } from "@/game/audio";
 import type { PowerId, WeaponId } from "@/game/types";
 
@@ -12,21 +12,35 @@ interface Props {
   onWeapon: (down: boolean) => void;
 }
 
-const TOUCH_QUERY = "(pointer: coarse), (max-width: 768px)";
+interface TouchRipple {
+  id: number;
+  x: number;
+  y: number;
+  zone: "left" | "center" | "right";
+}
 
 function useTouchUi(): boolean {
-  const [on, setOn] = useState(() =>
-    typeof window !== "undefined" && typeof window.matchMedia === "function"
-      ? window.matchMedia(TOUCH_QUERY).matches
-      : false,
-  );
+  const check = () => {
+    if (typeof window === "undefined") return false;
+    if (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0) return true;
+    if (/iPad|iPhone|iPod|Android/i.test(navigator.userAgent)) return true;
+    if (typeof window.matchMedia === "function") {
+      return window.matchMedia("(pointer: coarse), (max-width: 1024px)").matches;
+    }
+    return false;
+  };
+
+  const [on, setOn] = useState(check);
   useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const mq = window.matchMedia(TOUCH_QUERY);
-    const sync = () => setOn(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+    setOn(check());
+    const mq = window.matchMedia?.("(pointer: coarse)");
+    const sync = () => setOn(check());
+    mq?.addEventListener?.("change", sync);
+    window.addEventListener?.("resize", sync);
+    return () => {
+      mq?.removeEventListener?.("change", sync);
+      window.removeEventListener?.("resize", sync);
+    };
   }, []);
   return on;
 }
@@ -40,211 +54,171 @@ export const TouchControls = memo(function TouchControls({
   onWeapon,
 }: Props) {
   const show = useTouchUi();
-  const leftPadRef = useRef<HTMLDivElement>(null);
-  const padRectRef = useRef<{ left: number; width: number } | null>(null);
-  const steerPointerId = useRef<number | null>(null);
-  const [activeDir, setActiveDir] = useState<-1 | 0 | 1>(0);
-  const [isJumpActive, setIsJumpActive] = useState(false);
-  const [isAtkActive, setIsAtkActive] = useState(false);
-  const [isPowerActive, setIsPowerActive] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const activePointers = useRef<Map<number, { x: number; y: number; zone: "left" | "center" | "right" }>>(
+    new Map(),
+  );
+  const lastTapTime = useRef<number>(0);
+  const [ripples, setRipples] = useState<TouchRipple[]>([]);
+  const rippleSeq = useRef(0);
 
-  // Steer tracking (drag / slide support that works reliably on touch screens)
-  const handleLeftPointer = (clientX: number) => {
-    let rect = padRectRef.current;
-    if (!rect && leftPadRef.current) {
-      const b = leftPadRef.current.getBoundingClientRect();
-      rect = { left: b.left, width: b.width };
-      padRectRef.current = rect;
-    }
-    if (!rect) return;
+  const getZone = (clientX: number): "left" | "center" | "right" => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    const width = rect?.width || window.innerWidth || 390;
+    const relX = clientX - (rect?.left || 0);
+    const ratio = relX / width;
 
-    const centerX = rect.left + rect.width / 2;
-    const diff = clientX - centerX;
-
-    const deadZone = 12;
-    let nextDir: -1 | 0 | 1 = 0;
-    if (diff < -deadZone) nextDir = -1;
-    else if (diff > deadZone) nextDir = 1;
-
-    setActiveDir((prev) => {
-      if (prev !== nextDir) {
-        onMove(nextDir);
-        return nextDir;
-      }
-      return prev;
-    });
+    if (ratio < 0.38) return "left";
+    if (ratio > 0.62) return "right";
+    return "center";
   };
 
-  const handleLeftRelease = (e: React.PointerEvent) => {
-    e.preventDefault();
-    padRectRef.current = null;
-    if (steerPointerId.current === e.pointerId) {
-      steerPointerId.current = null;
-      try {
-        (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
+  const syncStateFromPointers = useCallback(() => {
+    let moveDir: -1 | 0 | 1 = 0;
+    let anyJump = false;
+
+    for (const info of activePointers.current.values()) {
+      if (info.zone === "left") {
+        moveDir = -1;
+        anyJump = true;
+      } else if (info.zone === "right") {
+        moveDir = 1;
+        anyJump = true;
+      } else if (info.zone === "center") {
+        anyJump = true;
       }
-      setActiveDir(0);
-      onMove(0);
     }
+
+    onMove(moveDir);
+    onJump(anyJump);
+  }, [onMove, onJump]);
+
+  const addRipple = (x: number, y: number, zone: "left" | "center" | "right") => {
+    const id = ++rippleSeq.current;
+    setRipples((prev) => [...prev.slice(-3), { id, x, y, zone }]);
+    window.setTimeout(() => {
+      setRipples((prev) => prev.filter((r) => r.id !== id));
+    }, 280);
   };
 
-  const tapAttack = (e: React.PointerEvent) => {
+  const handlePointerDown = (e: React.PointerEvent) => {
+    audioBus.unlock();
+
+    // Double tap anywhere on screen triggers weapon attack
+    const now = Date.now();
+    if (now - lastTapTime.current < 260) {
+      onWeapon(true);
+      window.setTimeout(() => onWeapon(false), 80);
+      lastTapTime.current = 0;
+    } else {
+      lastTapTime.current = now;
+    }
+
+    const zone = getZone(e.clientX);
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, zone });
+
+    const rect = containerRef.current?.getBoundingClientRect();
+    const localX = e.clientX - (rect?.left || 0);
+    const localY = e.clientY - (rect?.top || 0);
+    addRipple(localX, localY, zone);
+
+    syncStateFromPointers();
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!activePointers.current.has(e.pointerId)) return;
+    const zone = getZone(e.clientX);
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, zone });
+    syncStateFromPointers();
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    activePointers.current.delete(e.pointerId);
+    syncStateFromPointers();
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    activePointers.current.delete(e.pointerId);
+    syncStateFromPointers();
+  };
+
+  const triggerAttack = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
     e.preventDefault();
     audioBus.unlock();
-    setIsAtkActive(true);
     onWeapon(true);
     window.setTimeout(() => onWeapon(false), 80);
-    window.setTimeout(() => setIsAtkActive(false), 120);
   };
 
-  const tapPower = (e: React.PointerEvent) => {
+  const triggerPower = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
     e.preventDefault();
     audioBus.unlock();
-    setIsPowerActive(true);
     onPower(true);
     window.setTimeout(() => onPower(false), 80);
-    window.setTimeout(() => setIsPowerActive(false), 120);
-  };
-
-  const handleJumpPress = (e: React.PointerEvent) => {
-    e.preventDefault();
-    audioBus.unlock();
-    setIsJumpActive(true);
-    onJump(true);
-  };
-
-  const handleJumpRelease = (e: React.PointerEvent) => {
-    e.preventDefault();
-    setIsJumpActive(false);
-    onJump(false);
   };
 
   if (!show) return null;
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-20 select-none touch-none"
+      ref={containerRef}
+      className="pointer-events-auto absolute inset-0 z-20 select-none touch-none overflow-hidden"
       dir="ltr"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onContextMenu={(e) => e.preventDefault()}
     >
-      {/* Bottom Controls Bar: natural thumb placement without expensive blur filters */}
-      <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 flex items-end justify-between px-3 pb-[max(14px,env(safe-area-inset-bottom))] pt-2">
-        {/* Left Thumb: Steering Slide Pad (Left & Right) */}
-        <div
-          ref={leftPadRef}
-          data-pad="steer"
-          className="relative flex h-[76px] w-[170px] touch-none items-center justify-between rounded-full border-2 border-ice/60 bg-[#100a08]/92 p-1.5 shadow-[0_0_12px_rgba(126,231,255,0.25)]"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            audioBus.unlock();
-            steerPointerId.current = e.pointerId;
-            try {
-              (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-            } catch {
-              /* ignore */
-            }
-            handleLeftPointer(e.clientX);
+      {/* Subtle, soft touch feedback ripples under finger */}
+      {ripples.map((r) => (
+        <span
+          key={r.id}
+          className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-ice/50 bg-ice/15 animate-ping duration-300"
+          style={{
+            left: r.x,
+            top: r.y,
+            width: 70,
+            height: 70,
           }}
-          onPointerMove={(e) => {
-            if (steerPointerId.current === e.pointerId) {
-              e.preventDefault();
-              handleLeftPointer(e.clientX);
-            }
-          }}
-          onPointerUp={handleLeftRelease}
-          onPointerCancel={handleLeftRelease}
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          {/* LEFT BUTTON */}
-          <div
-            className={`flex h-full flex-1 items-center justify-center rounded-full transition-all duration-75 ${
-              activeDir === -1
-                ? "scale-95 bg-ice/40 text-fg shadow-[inset_0_0_10px_rgba(126,231,255,0.8)]"
-                : "bg-white/5 text-ice/80"
-            }`}
-          >
-            <div className="flex flex-col items-center pointer-events-none">
-              <span className="font-display text-2xl font-bold leading-none">◀</span>
-              <span className="text-[9px] font-bold tracking-wider text-gold">LEFT</span>
-            </div>
-          </div>
+        />
+      ))}
 
-          <div className="h-6 w-[1px] bg-ice/20 mx-1 pointer-events-none" />
-
-          {/* RIGHT BUTTON */}
-          <div
-            className={`flex h-full flex-1 items-center justify-center rounded-full transition-all duration-75 ${
-              activeDir === 1
-                ? "scale-95 bg-ice/40 text-fg shadow-[inset_0_0_10px_rgba(126,231,255,0.8)]"
-                : "bg-white/5 text-ice/80"
-            }`}
-          >
-            <div className="flex flex-col items-center pointer-events-none">
-              <span className="font-display text-2xl font-bold leading-none">▶</span>
-              <span className="text-[9px] font-bold tracking-wider text-gold">RIGHT</span>
-            </div>
-          </div>
+      {/* Discreet, non-intrusive action controls in lower corners - only when needed */}
+      <div className="pointer-events-none absolute inset-x-3 bottom-[max(12px,env(safe-area-inset-bottom))] z-30 flex items-end justify-between">
+        {/* Subtle touch hints on screen edge */}
+        <div className="flex items-center gap-1 opacity-25 pointer-events-none text-[10px] font-bold text-ice tracking-wider">
+          <span>◀ LEFT</span>
         </div>
 
-        {/* Right Thumb: Actions (POW, ATK & JUMP) */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* DEDICATED POW BUTTON */}
+        {/* Minimalist Floating Action Controls (Attack & Power) */}
+        <div className="pointer-events-auto flex items-center gap-2.5">
           {power && power !== "blade" && (
             <button
               type="button"
-              data-pad="pow"
               aria-label="Power"
-              className={`flex h-[56px] w-[56px] touch-none flex-col items-center justify-center rounded-full border-2 border-gold bg-[#1e1408]/95 font-display text-gold shadow-[0_0_12px_rgba(255,211,106,0.6)] transition-all duration-75 active:scale-90 ${
-                isPowerActive
-                  ? "scale-90 border-fg bg-gold/40 text-fg shadow-[inset_0_0_12px_rgba(255,211,106,0.9)]"
-                  : "animate-pulse"
-              }`}
-              onPointerDown={tapPower}
-              onContextMenu={(e) => e.preventDefault()}
+              onClick={triggerPower}
+              className="flex size-11 items-center justify-center rounded-full border border-gold/70 bg-[#160c08]/85 text-gold shadow-md backdrop-blur-xs active:scale-90"
             >
-              <span className="text-sm font-extrabold leading-none">POW</span>
-              <span className="text-[7px] font-extrabold uppercase tracking-tight text-ice">
-                {power}
-              </span>
+              <span className="font-display text-xs font-black">POW</span>
             </button>
           )}
 
-          {/* ATK BUTTON */}
           <button
             type="button"
-            data-pad="atk"
             aria-label="Attack"
-            className={`flex h-[58px] w-[58px] touch-none flex-col items-center justify-center rounded-full border-2 border-rose/70 bg-[#160a08]/92 font-display text-sm font-bold text-rose shadow-[0_0_10px_rgba(255,77,138,0.3)] transition-transform duration-75 active:scale-90 ${
-              isAtkActive ? "scale-90 bg-rose/40 text-fg shadow-[inset_0_0_10px_rgba(255,77,138,0.9)]" : ""
-            }`}
-            onPointerDown={tapAttack}
-            onContextMenu={(e) => e.preventDefault()}
+            onClick={triggerAttack}
+            className="flex size-11 items-center justify-center rounded-full border border-rose/70 bg-[#160c08]/85 text-rose shadow-md backdrop-blur-xs active:scale-90"
           >
-            <span className="text-base leading-none">ATK</span>
-            <span className="text-[8px] font-bold text-gold">
-              {ammo > 0 ? `×${ammo}` : "HIT"}
+            <span className="font-display text-xs font-bold">
+              {ammo > 0 ? `×${ammo}` : "ATK"}
             </span>
           </button>
+        </div>
 
-          {/* BIG JUMP BUTTON */}
-          <button
-            type="button"
-            data-pad="jump"
-            aria-label="Jump"
-            className={`flex h-[78px] w-[78px] touch-none flex-col items-center justify-center rounded-full border-[3px] border-ice bg-gradient-to-b from-[#18283a] to-[#0a1420] font-display text-ice shadow-[0_0_16px_rgba(126,231,255,0.4)] transition-all duration-75 active:scale-90 ${
-              isJumpActive
-                ? "scale-90 border-mint bg-mint/30 text-fg shadow-[inset_0_0_14px_rgba(124,255,178,0.9)]"
-                : ""
-            }`}
-            onPointerDown={handleJumpPress}
-            onPointerUp={handleJumpRelease}
-            onPointerCancel={handleJumpRelease}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            <span className="text-3xl font-extrabold leading-none">▲</span>
-            <span className="text-[10px] font-extrabold tracking-widest text-mint">JUMP</span>
-          </button>
+        <div className="flex items-center gap-1 opacity-25 pointer-events-none text-[10px] font-bold text-ice tracking-wider">
+          <span>RIGHT ▶</span>
         </div>
       </div>
     </div>

@@ -237,8 +237,7 @@ export class RimeEngine {
 			jump: (p) => {
 				if (p.id === this.localId) {
 					this.audio.jump(p.combo);
-					if (this.shakeOn && p.combo >= 8) buzz(14);
-					if (Math.abs(p.vx) > 200) this.punch(.22);
+					if (this.shakeOn && p.combo >= 12) buzz(14);
 				}
 				this.burst(p.x, p.y, 7 + Math.min(6, p.combo), "#e8f4ff", "dust");
 			},
@@ -247,20 +246,19 @@ export class RimeEngine {
 				if (p.id === this.localId) {
 					this.audio.land();
 					if (this.shakeOn && (kind === "spring" || kind === "crumble")) buzz(12);
+					if (kind === "spring") this.punch(.2);
 				}
 				if (kind === "spring") this.burst(p.x, p.y, 8, "#7cffb2", "spark");
 				else if (kind === "crumble") this.burst(p.x, p.y, 8, "#c4a882", "dust");
 				else if (kind === "check") this.burst(p.x, p.y, 7, "#ffd36a", "spark");
 				else if (kind === "conveyor") this.burst(p.x, p.y, 5, "#7ee7ff", "trail");
 				else this.burst(p.x, p.y, 8, "#b8f0ff", "ice");
-				if (p.id === this.localId) this.punch(.42 + Math.min(.4, p.combo * .05));
 			},
 			wall: (p) => {
 				this.burst(p.x, p.y + 16, 6, "#7ee7ff", "ice");
 				if (p.id === this.localId) {
 					this.audio.wall();
 					if (this.shakeOn && Math.abs(p.vx) > 220) buzz(12);
-					this.punch(.48);
 				}
 			},
 			combo: (p, prev, gain) => {
@@ -268,7 +266,6 @@ export class RimeEngine {
 				this.audio.combo(p.combo);
 				this.audio.setHeat(p.combo);
 				if (p.combo < 2) return;
-				this.punch(.28);
 				this.comboKey += 1;
 				this.comboYell = comboYellOf(p.combo);
 				this.lastGain = gain;
@@ -844,8 +841,8 @@ export class RimeEngine {
 			const lead = this.players.filter((p) => p.alive).sort((a, b) => b.y - a.y)[0];
 			if (lead && this.mode !== "solo" && this.mode !== "train") target = lead.y - viewH * .48;
 		} else if (local) {
-			const look = this.attract ? .62 : local.combo >= 8 ? .42 : .48;
-			target = local.y - viewH * look + Math.max(0, local.vy) * F.CAM_LOOKAHEAD;
+			// Center player comfortably at 42% from the bottom of the screen
+			target = local.y - viewH * 0.42;
 		}
 		if (this.mode === "laststand" && this.time > 4) {
 			const view = Math.max(this.viewH, 560);
@@ -856,12 +853,20 @@ export class RimeEngine {
 			target = Math.max(target, this.killY);
 		}
 		const k = 1 - Math.exp(-F.CAM_FOLLOW * dt);
-		const next = this.cam.y + (target - this.cam.y) * k;
-		this.cam.y = this.attract || this.mode === "train" || local && !local.alive ? next : Math.max(this.cam.y, next);
+		if (target < this.cam.y) {
+			// Smooth, gentle downward tracking bounded by start/kill floor
+			const minCamY = Math.max(-80, (this.killY ?? -40));
+			const kDown = 1 - Math.exp(-3.2 * dt);
+			const nextDown = this.cam.y + (target - this.cam.y) * kDown;
+			this.cam.y = Math.max(minCamY, nextDown);
+		} else {
+			this.cam.y += (target - this.cam.y) * k;
+		}
 		const mag = this.trauma;
-		this.cam.shakeX = this.shakeOn ? (Math.random() * 2 - 1) * (8 + 26 * mag) * mag : 0;
-		this.cam.shakeY = this.shakeOn ? (Math.random() * 2 - 1) * (6 + 18 * mag) * mag : 0;
-		this.trauma = Math.max(0, this.trauma - dt * 2.6);
+		// Subtle, tasteful screen shake - max 4px, decaying cleanly
+		this.cam.shakeX = this.shakeOn ? (Math.random() * 2 - 1) * (4 * mag * mag) : 0;
+		this.cam.shakeY = this.shakeOn ? (Math.random() * 2 - 1) * (3 * mag * mag) : 0;
+		this.trauma = Math.max(0, this.trauma - dt * 3.5);
 	}
 	hurt(p: any, dmg: any) {
 		if (!p.alive || p.effects.invulnT > 0) return;
@@ -1523,7 +1528,7 @@ export class RimeEngine {
 				};
 			}),
 			killIn: Math.max(0, dist),
-			hint: showCoach ? "Tap ▲ JUMP (Space / W / ↑) to hop. Hold ◀ ▶ (A / D) to run — faster = higher." : null,
+			hint: showCoach ? "Tap left/right to steer & hop · Tap center to jump straight" : null,
 			danger: !!p && p.alive && this.time > F.SPAWN_PROTECT && dist < this.viewH * .22,
 			downed: !!p && !p.alive && this.waitingContinue,
 			continueLeft: this.continueT,
