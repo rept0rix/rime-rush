@@ -90,69 +90,108 @@ function loadImg(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-export class SpriteBank {
-  private images = new Map<string, HTMLImageElement>();
-  private atlas: HTMLImageElement | null = null;
-  private creeps = new Map<string, HTMLImageElement[]>();
-  ready = false;
-  private warming = false;
-  bg: HTMLImageElement | null = null;
+const SHARED_IMAGES = new Map<string, HTMLImageElement>();
+let SHARED_ATLAS: HTMLImageElement | null = null;
+const SHARED_CREEPS = new Map<string, HTMLImageElement[]>();
+let preloadPromise: Promise<void> | null = null;
 
-  async load(): Promise<void> {
-    const idle = await loadImg("/sprites/hopper/idle.png");
-    if (idle) this.images.set("/sprites/hopper/idle.png", idle);
-    this.ready = true;
-  }
+export function preloadAllGameAssets(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (preloadPromise) return preloadPromise;
 
-  warmPlay(): void {
-    if (this.warming) return;
-    this.warming = true;
-    void this.loadHopper();
-    void this.loadAtlas();
-    void this.loadCreeps();
-  }
+  preloadPromise = (async () => {
+    // 1. Atlas
+    const atlasP = loadImg(LEDGE_ATLAS).then((img) => {
+      if (img) SHARED_ATLAS = img;
+    });
 
-  private async loadHopper(): Promise<void> {
-    const urls = [
+    // 2. All player skins
+    const skinUrls = [
       ...new Set([
         ...Object.values(HOPPER).flat(),
         ...Object.values(alt("ember")).flat(),
         ...Object.values(alt("nova")).flat(),
         ...Object.values(alt("frost")).flat(),
       ]),
-    ].filter((src) => src !== "/sprites/hopper/idle.png");
-    const loaded = await Promise.all(urls.map((src) => loadImg(src)));
-    urls.forEach((src, i) => {
-      const img = loaded[i];
-      if (img) this.images.set(src, img);
-    });
-  }
-
-  private async loadAtlas(): Promise<void> {
-    const img = await loadImg(LEDGE_ATLAS);
-    if (img) this.atlas = img;
-  }
-
-  private async loadCreeps(): Promise<void> {
-    const kinds = ["rat", "bat", "ember", "raider"] as const;
-    await Promise.all(
-      kinds.map(async (kind) => {
-        const frames = await Promise.all([0, 1, 2, 3].map((i) => loadImg(`/enemies/${kind}-${i}.png`)));
-        this.creeps.set(
-          kind,
-          frames.filter((f): f is HTMLImageElement => !!f),
-        );
+    ];
+    const skinsP = Promise.all(
+      skinUrls.map(async (src) => {
+        if (!SHARED_IMAGES.has(src)) {
+          const img = await loadImg(src);
+          if (img) SHARED_IMAGES.set(src, img);
+        }
       }),
     );
+
+    // 3. Enemies
+    const kinds = ["rat", "bat", "ember", "raider"] as const;
+    const creepsP = Promise.all(
+      kinds.map(async (kind) => {
+        if (!SHARED_CREEPS.has(kind)) {
+          const frames = await Promise.all([0, 1, 2, 3].map((i) => loadImg(`/enemies/${kind}-${i}.png`)));
+          SHARED_CREEPS.set(
+            kind,
+            frames.filter((f): f is HTMLImageElement => !!f),
+          );
+        }
+      }),
+    );
+
+    // 4. Common UI
+    const uiUrls = [
+      "/ui/logo.png",
+      "/ui/play.png",
+      "/ui/you-fell.png",
+      "/ui/fell-board.png",
+      "/ui/home.png",
+      "/ui/room.png",
+    ];
+    const uiP = Promise.all(
+      uiUrls.map(async (src) => {
+        if (!SHARED_IMAGES.has(src)) {
+          const img = await loadImg(src);
+          if (img) SHARED_IMAGES.set(src, img);
+        }
+      }),
+    );
+
+    await Promise.all([atlasP, skinsP, creepsP, uiP]);
+  })();
+
+  return preloadPromise;
+}
+
+// Automatically initiate preload on import in browser
+if (typeof window !== "undefined") {
+  void preloadAllGameAssets();
+}
+
+export class SpriteBank {
+  bg: HTMLImageElement | null = null;
+
+  get ready(): boolean {
+    return SHARED_ATLAS !== null && SHARED_IMAGES.size > 0;
+  }
+
+  set ready(_val: boolean) {
+    /* no-op for backward compatibility */
+  }
+
+  async load(): Promise<void> {
+    await preloadAllGameAssets();
+  }
+
+  warmPlay(): void {
+    void preloadAllGameAssets();
   }
 
   frame(sheet: SheetName, t: number, color = 0): HTMLImageElement | null {
     const id = skinId(color);
     const list = SHEETS[id]?.[sheet] ?? HOPPER[sheet];
     const i = Math.floor(Math.max(0, t)) % list.length;
-    const img = this.images.get(list[i]!);
+    const img = SHARED_IMAGES.get(list[i]!);
     if (img) return img;
-    return this.images.get(HOPPER[sheet][0]!) ?? null;
+    return SHARED_IMAGES.get(HOPPER[sheet][0]!) ?? SHARED_IMAGES.get("/sprites/hopper/idle.png") ?? null;
   }
 
   creep(kind: string, t: number): HTMLImageElement | null {
@@ -161,7 +200,7 @@ export class SpriteBank {
 
   /** Pick a readable attack pose without new art: wind favors late frames, lunge mid frames. */
   creepFrame(kind: string, t: number, mode: "idle" | "wind" | "lunge" = "idle"): HTMLImageElement | null {
-    const frames = this.creeps.get(kind);
+    const frames = SHARED_CREEPS.get(kind);
     if (!frames || frames.length === 0) return null;
     const n = frames.length;
     const base = Math.floor(Math.max(0, t));
@@ -179,12 +218,12 @@ export class SpriteBank {
   }
 
   ledge(index: number): LedgeBlit | null {
-    if (!this.atlas) return null;
+    if (!SHARED_ATLAS) return null;
     const i = ((index % LEDGE_COUNT) + LEDGE_COUNT) % LEDGE_COUNT;
     const col = i % LEDGE_COLS;
     const row = Math.floor(i / LEDGE_COLS);
     return {
-      img: this.atlas,
+      img: SHARED_ATLAS,
       sx: col * LEDGE_CELL_W,
       sy: row * LEDGE_CELL_H,
       sw: LEDGE_WIDTHS[i] ?? LEDGE_CELL_W,

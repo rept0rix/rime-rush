@@ -137,11 +137,15 @@ function LiveLobby({ code, host }: { code: string; host: boolean }) {
     };
     beat();
     const t = window.setInterval(beat, 6000);
+    return () => window.clearInterval(t);
+  }, [host, code, name, mpMode, p2p.peers.length, started]);
+
+  useEffect(() => {
+    if (!host) return;
     return () => {
-      window.clearInterval(t);
       void closeRoom({ data: { room: code } });
     };
-  }, [host, code, name, mpMode, p2p.peers.length, started]);
+  }, [host, code]);
 
   useEffect(() => {
     if (host) publishLobby(p2p, save.color, save.outfit, name, mpMode, fillBots, p2p.selfId);

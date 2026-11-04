@@ -290,7 +290,7 @@ export class RimeEngine {
 				if (a.id === this.localId || b.id === this.localId) {
 					this.audio.hit();
 					this.punch(.4);
-					this.shakeOn && buzz(20);
+					if (this.shakeOn) buzz(20);
 				}
 				this.burst((a.x + b.x) / 2, (a.y + b.y) / 2, 8, "#fff4dc", "spark");
 			},
@@ -379,7 +379,6 @@ export class RimeEngine {
 			}
 		};
 		this.raf = requestAnimationFrame(loop);
-		window.setTimeout(() => this.sprites.warmPlay(), 800);
 	}
 	stop() {
 		this.running = false;
@@ -650,21 +649,18 @@ export class RimeEngine {
 			}
 			const p = this.local();
 			this.attractT += dt;
-			if (p && (p.floor >= 9 || this.attractT > 14)) {
-				p.x = 195;
-				p.y = 22;
-				p.vx = 160 * this.attractDir;
-				p.vy = jumpImpulse(160) * .85;
-				p.floor = 0;
-				p.score = 0;
-				p.combo = 0;
-				p.comboT = 0;
-				p.spin = 0;
-				p.spinV = 0;
-				p.grounded = false;
-				p.trail = [];
-				this.cam.y = -360;
-				this.attractT = 0;
+			if (p) {
+				// Smooth, continuous loop across starter platforms without jarring camera snaps
+				if (p.y > 260 || this.attractT > 20) {
+					p.y = 120;
+					p.vy = 0;
+					p.vx = 140 * this.attractDir;
+					this.attractT = 0;
+				}
+				if (p.y < 0) {
+					p.y = 22;
+					p.vy = jumpImpulse(140) * 0.8;
+				}
 			}
 			if (p?.alive) stepPlayer(p, this.attractActions(p), this.world, dt, this.juice);
 			this.tickFx(dt);
@@ -834,6 +830,13 @@ export class RimeEngine {
 	updateCamera(dt: any) {
 		const local = this.local();
 		const viewH = this.viewH;
+
+		if (this.attract) {
+			// Lock camera at base ground level for smooth, non-snapping menu loop
+			this.cam.y = -80;
+			return;
+		}
+
 		let target = this.cam.y;
 		if (local && !local.alive) {
 			if (this.pitHit && this.pitY != null) target = this.pitY - viewH * .2;
@@ -844,24 +847,56 @@ export class RimeEngine {
 			// Center player comfortably at 42% from the bottom of the screen
 			target = local.y - viewH * 0.42;
 		}
-		if (this.mode === "laststand" && this.time > 4) {
+
+		if ((this.mode === "laststand" || this.mode === "bots") && this.time > 3) {
 			const view = Math.max(this.viewH, 560);
 			const top = Math.max(...this.players.filter((p) => p.alive).map((p) => p.y), 40);
-			const t = this.time - 4;
-			const rise = t * (10 + t * .22);
-			this.killY = Math.max(this.killY, Math.min(top - view * .92, rise - 60));
+			const t = this.time - 3;
+			const rise = t * (12 + t * 0.16);
+			this.killY = Math.max(this.killY, Math.min(top - view * 0.9, rise - 60));
 			target = Math.max(target, this.killY);
 		}
+
 		const k = 1 - Math.exp(-F.CAM_FOLLOW * dt);
-		if (target < this.cam.y) {
-			// Smooth, gentle downward tracking bounded by start/kill floor
-			const minCamY = Math.max(-80, (this.killY ?? -40));
-			const kDown = 1 - Math.exp(-3.2 * dt);
-			const nextDown = this.cam.y + (target - this.cam.y) * kDown;
-			this.cam.y = Math.max(minCamY, nextDown);
+
+		if (this.mode === "solo") {
+			// Solo: camera scrolls up with progress. Never scrolls back down once past floor 2.
+			if ((local?.floor ?? 0) < 3) {
+				const minCamY = -80;
+				const starterTarget = Math.max(minCamY, target);
+				if (starterTarget > this.cam.y) {
+					this.cam.y += (starterTarget - this.cam.y) * k;
+				} else {
+					const kDown = 1 - Math.exp(-3.2 * dt);
+					this.cam.y = Math.max(minCamY, this.cam.y + (starterTarget - this.cam.y) * kDown);
+				}
+			} else {
+				if (target > this.cam.y) {
+					this.cam.y += (target - this.cam.y) * k;
+				}
+				if (this.hurryOn && this.world.scrollSpeed > 0) {
+					this.cam.y += this.world.scrollSpeed * dt;
+				}
+			}
+		} else if (this.mode === "laststand" || this.mode === "bots") {
+			if (target > this.cam.y) {
+				this.cam.y += (target - this.cam.y) * k;
+			} else {
+				const bound = Math.max(-80, this.killY);
+				const kDown = 1 - Math.exp(-2.5 * dt);
+				this.cam.y = Math.max(bound, this.cam.y + (Math.max(bound, target) - this.cam.y) * kDown);
+			}
 		} else {
-			this.cam.y += (target - this.cam.y) * k;
+			if (target < this.cam.y) {
+				const minCamY = Math.max(-80, (this.killY ?? -40));
+				const kDown = 1 - Math.exp(-3.2 * dt);
+				const nextDown = this.cam.y + (target - this.cam.y) * kDown;
+				this.cam.y = Math.max(minCamY, nextDown);
+			} else {
+				this.cam.y += (target - this.cam.y) * k;
+			}
 		}
+
 		const mag = this.trauma;
 		// Subtle, tasteful screen shake - max 4px, decaying cleanly
 		this.cam.shakeX = this.shakeOn ? (Math.random() * 2 - 1) * (4 * mag * mag) : 0;
@@ -948,7 +983,7 @@ export class RimeEngine {
 		this.trauma = Math.min(1, this.trauma + n);
 	}
 	checkDeath() {
-		if (this.mode === "train") {
+		if (this.mode === "train" || this.attract) {
 			for (const p of this.players) if (p.y < -40) {
 				p.y = 22;
 				p.vy = 0;
@@ -956,12 +991,12 @@ export class RimeEngine {
 			}
 			return;
 		}
-		if (this.time < (this.mode === "solo" ? F.SPAWN_PROTECT : 2.2)) return;
-		const line = this.mode === "laststand" ? Math.max(this.killY, this.cam.y) : this.cam.y;
+		if (this.time < (this.mode === "solo" ? F.SPAWN_PROTECT : 2.5)) return;
+		const line = (this.mode === "laststand" || this.mode === "bots") ? Math.max(this.killY, this.cam.y - 120) : this.cam.y;
 		for (const p of this.players) {
 			if (!p.alive) continue;
-			if (line - p.y > 28 && p.id === this.localId) this.screamOn = true;
-			if (p.y < line - 210) this.kill(p);
+			if (line - p.y > 10 && p.id === this.localId) this.screamOn = true;
+			if (p.y < line - 25) this.kill(p);
 		}
 	}
 	kill(p: any) {
@@ -989,7 +1024,7 @@ export class RimeEngine {
 			});
 		}
 		this.punch(1);
-		this.shakeOn && buzz([
+		if (this.shakeOn) buzz([
 			40,
 			30,
 			70
@@ -1012,7 +1047,7 @@ export class RimeEngine {
 		this.burst(p.x, (this.pitY ?? p.y) + 4, 16, "#6b121c", "blood");
 		this.audio.splat();
 		this.punch(.55);
-		this.shakeOn && buzz([
+		if (this.shakeOn) buzz([
 			30,
 			20,
 			40

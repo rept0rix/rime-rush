@@ -76,7 +76,9 @@ export const TouchControls = memo(function TouchControls({
     audioBus.unlock();
     try {
       (e.currentTarget as HTMLElement)?.setPointerCapture?.(e.pointerId);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
 
     const now = Date.now();
     // Multi-touch attack: 2 or more fingers down = immediate attack

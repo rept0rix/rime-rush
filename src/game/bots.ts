@@ -1,61 +1,72 @@
 import type { Actions } from "./input";
 import type { Player } from "./types";
-import type { World } from "./world";
+import { floorTop, type World } from "./world";
 import { INNER_L, INNER_R } from "./constants";
 
-const BOT_NAMES = ["Ash", "Cinder", "Blaze", "Ember", "אפר", "גחל", "להבה", "אמבר"];
+const BOT_NAMES = ["Ash", "Cinder", "Blaze", "Ember"];
 
 export function botName(i: number, _lang: "he" | "en"): string {
-  return BOT_NAMES[i % 4]!; // English-only UI
+  return BOT_NAMES[i % BOT_NAMES.length]!;
 }
 
 export function thinkBot(p: Player, world: World, rivals: Player[]): Actions {
-  const next = world.floorByN(p.floor + 1) ?? world.floorByN(p.floor + 2);
+  // 1. Locate next reachable floor above the bot
+  const candidates = world
+    .nearby(p.y + 70, 200)
+    .filter((f) => !f.gone && floorTop(f) > p.y + 4)
+    .sort((a, b) => a.y - b.y);
+
+  const next = candidates[0] ?? world.floorByN(p.floor + 1) ?? world.floorByN(p.floor + 2);
   const targetX = next ? next.x + next.w * 0.5 : (INNER_L + INNER_R) / 2;
   const dx = targetX - p.x;
+
   let moveX = 0;
-  if (Math.abs(dx) > 8) moveX = Math.sign(dx);
-
-  if (p.grounded && Math.abs(p.vx) > 30) {
-    const toward = Math.sign(dx) || Math.sign(p.vx);
-    if (toward === Math.sign(p.vx) || Math.abs(dx) < 50) moveX = Math.sign(p.vx) || moveX;
+  if (Math.abs(dx) > 10) {
+    moveX = Math.sign(dx);
   }
 
-  if (p.x < INNER_L + 30) moveX = 1;
-  if (p.x > INNER_R - 30) moveX = -1;
+  // Prevent getting glued to side walls
+  if (p.x < INNER_L + 24) moveX = 1;
+  if (p.x > INNER_R - 24) moveX = -1;
 
-  const overNext = !!next && p.x > next.x - 4 && p.x < next.x + next.w + 4;
-  const approaching = !!next && Math.abs(p.x - targetX) < Math.max(64, (next.w ?? 80) * 0.7);
-  const fast = Math.abs(p.vx) > 70;
-  let jumpPressed = p.grounded && fast && (approaching || overNext || p.floor === 0);
-
-  if (p.grounded && p.floor === 0 && Math.abs(p.vx) < 80) {
-    moveX = p.x < (INNER_L + INNER_R) / 2 ? 1 : -1;
+  // 2. Jumping logic: ground jump & wall kick
+  let jumpPressed = false;
+  if (p.onWall !== 0) {
+    // Wall kick off the wall
+    jumpPressed = true;
+    moveX = -p.onWall;
+  } else if (p.grounded || p.coyote > 0) {
+    // Jump whenever grounded to climb upward
+    jumpPressed = true;
   }
 
-  const local = rivals.find((r) => !r.bot && r.alive);
-  let weaponPressed = Math.random() < 0.02;
-  if (local && local.alive) {
-    const dy = local.y - p.y;
-    const ddx = local.x - p.x;
-    if (Math.abs(dy) < 70) {
-      if (Math.abs(ddx) > 16) moveX = Math.sign(ddx);
-      if (Math.abs(ddx) < 52) weaponPressed = true;
-    }
-    if (dy > 36 && p.grounded) jumpPressed = true;
+  // 3. Combat: attack nearby rivals
+  const nearRival = rivals.find(
+    (r) => r.id !== p.id && r.alive && Math.hypot(r.x - p.x, r.y - p.y) < 70,
+  );
+  let weaponPressed = false;
+  if (nearRival && p.weaponT > 0) {
+    weaponPressed = true;
+    if (Math.abs(nearRival.x - p.x) > 8) moveX = Math.sign(nearRival.x - p.x);
+  } else if (Math.random() < 0.02 && p.weaponT > 3) {
+    weaponPressed = true;
   }
 
+  // 4. Power usage
   let powerPressed = false;
-  if (p.power && Math.random() < 0.04) {
-    const near = rivals.some((r) => r.alive && r.id !== p.id && Math.hypot(r.x - p.x, r.y - p.y) < 140);
-    if (near || p.power === "spring" || p.power === "glide" || p.power === "magnet" || p.power === "shield") {
+  if (p.power) {
+    const isBuff =
+      p.power === "spring" || p.power === "glide" || p.power === "magnet" || p.power === "shield";
+    const hasCombatTarget =
+      nearRival || rivals.some((r) => r.id !== p.id && r.alive && Math.hypot(r.x - p.x, r.y - p.y) < 140);
+    if ((isBuff && Math.random() < 0.08) || (hasCombatTarget && Math.random() < 0.12)) {
       powerPressed = true;
     }
   }
 
   return {
     moveX,
-    jumpHeld: !p.grounded || jumpPressed,
+    jumpHeld: true,
     jumpPressed,
     powerPressed,
     weaponPressed,

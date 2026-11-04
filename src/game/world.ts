@@ -242,12 +242,6 @@ export class World {
   }
 
   tick(dt: number): number {
-    const dy = this.scrollSpeed * dt;
-    if (dy !== 0) {
-      for (const f of this.floors) f.y -= dy;
-      for (const pk of this.pickups) pk.y -= dy;
-      this.lastY -= dy;
-    }
     for (const f of this.floors) {
       if (f.slickT > 0) f.slickT = Math.max(0, f.slickT - dt);
       if (f.pulseT > 0) f.pulseT = Math.max(0, f.pulseT - dt);
@@ -257,7 +251,7 @@ export class World {
       }
     }
     this.pickups = this.pickups.filter((pk) => !pk.taken && pk.y > this.killY - 240);
-    return dy;
+    return 0;
   }
 }
 

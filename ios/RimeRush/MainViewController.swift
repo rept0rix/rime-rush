@@ -43,7 +43,10 @@ class MainViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, 
     }
 
     @objc private func applicationWillEnterForeground() {
-        loadGame()
+        // Only reload if the webview failed to load previously or has no URL loaded
+        if webView.url == nil || offlineView != nil {
+            loadGame()
+        }
     }
 
     private func setupWebView() {
@@ -94,16 +97,8 @@ class MainViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, 
         loadingIndicator.startAnimating()
         hideOfflineView()
 
-        let cacheTypes: Set<String> = [
-            WKWebsiteDataTypeDiskCache,
-            WKWebsiteDataTypeMemoryCache,
-            WKWebsiteDataTypeOfflineWebApplicationCache
-        ]
-        WKWebsiteDataStore.default().removeData(ofTypes: cacheTypes, modifiedSince: Date.distantPast) { [weak self] in
-            guard let self = self else { return }
-            let request = URLRequest(url: Self.appURL, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 30.0)
-            self.webView.load(request)
-        }
+        let request = URLRequest(url: Self.appURL, cachePolicy: .useProtocolCachePolicy, timeoutInterval: 30.0)
+        self.webView.load(request)
     }
 
     // MARK: - WKScriptMessageHandler (Haptics & Notifications Bridges)

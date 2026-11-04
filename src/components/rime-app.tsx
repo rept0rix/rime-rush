@@ -14,6 +14,7 @@ import { NoteInbox } from "@/components/note-inbox";
 import { audioBus } from "@/game/audio";
 import { uiClick } from "@/game/haptics";
 import { dir, t } from "@/game/i18n";
+import { preloadAllGameAssets } from "@/game/sprites";
 import { useGame } from "@/game/store";
 import type { GameResult } from "@/game/types";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -30,6 +31,7 @@ export function RimeApp() {
 
   useEffect(() => {
     audioBus.setMute(useGame.getState().save.mute);
+    void preloadAllGameAssets();
   }, []);
 
   useEffect(() => {
